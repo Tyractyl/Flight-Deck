@@ -1,6 +1,7 @@
-import { useState } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { useState, useRef, useEffect } from 'react'
+import { Link, useLocation } from 'react-router-dom'
 import { cn } from '../../utils/cn'
+import { useAdminSidebar } from './AdminSidebarContext'
 
 const links = [
   { to: '/admin', label: 'Dashboard' },
@@ -16,41 +17,79 @@ const links = [
 
 export function AdminSidebar() {
   const location = useLocation()
-  const navigate = useNavigate()
-  const [mobileOpen, setMobileOpen] = useState(false)
-  const [hovered, setHovered] = useState<string | null>(null)
+  const admin = useAdminSidebar()
+  const navRef = useRef<HTMLElement>(null)
+  const [navHover, setNavHover] = useState({ top: 0, height: 0, opacity: 0 })
 
-  const close = () => setMobileOpen(false)
+  const close = () => admin?.setOpen(false)
+
+  const isActive = (path: string) => {
+    if (path === '/admin') return location.pathname === '/admin'
+    return location.pathname.startsWith(path)
+  }
+
+  const snapToActive = () => {
+    const activeLink = links.find((l) => isActive(l.to))
+    if (!activeLink || !navRef.current) {
+      setNavHover((prev) => ({ ...prev, opacity: 0 }))
+      return
+    }
+    const el = navRef.current.querySelector(`[data-nav="${activeLink.to}"]`)
+    if (!el) {
+      setNavHover((prev) => ({ ...prev, opacity: 0 }))
+      return
+    }
+    const navRect = navRef.current.getBoundingClientRect()
+    const rect = el.getBoundingClientRect()
+    setNavHover({
+      top: rect.top - navRect.top,
+      height: rect.height,
+      opacity: 1,
+    })
+  }
+
+  useEffect(() => {
+    const timer = setTimeout(snapToActive, 300)
+    return () => clearTimeout(timer)
+  }, [location.pathname])
+
+  const handleMouseEnter = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    const nav = navRef.current
+    if (!nav) return
+    const rect = e.currentTarget.getBoundingClientRect()
+    const navRect = nav.getBoundingClientRect()
+    setNavHover({
+      top: rect.top - navRect.top,
+      height: rect.height,
+      opacity: 1,
+    })
+  }
 
   return (
     <>
-      {/* Mobile open toggle */}
-      <button
-        onClick={() => setMobileOpen(true)}
-        className="lg:hidden fixed bottom-6 right-6 z-50 w-12 h-12 rounded-full bg-[var(--bg-card)] text-[var(--fg)] border border-[var(--border-strong)] shadow-lg flex items-center justify-center hover:bg-[var(--bg-elevated)] transition-all"
-        aria-label="Open admin navigation"
-      >
-        <svg width="20" height="14" viewBox="0 0 20 14" fill="none">
-          <path d="M1 1H19M1 7H19M1 13H19" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-        </svg>
-      </button>
-
-      {/* Sidebar shell */}
       <aside
         className={cn(
-          'w-64 shrink-0 flex flex-col h-full bg-black/40',
+          'relative w-64 shrink-0 h-full flex flex-col',
+          'bg-[var(--bg)]/80 backdrop-blur-md',
           'max-lg:fixed max-lg:inset-y-0 max-lg:left-0 max-lg:z-40 max-lg:transition-transform max-lg:duration-300 max-lg:ease-out',
-          mobileOpen ? 'max-lg:translate-x-0' : 'max-lg:-translate-x-full',
+          admin?.open ? 'max-lg:translate-x-0' : 'max-lg:-translate-x-full',
         )}
       >
-        {/* Header */}
-        <div className="shrink-0 flex items-center justify-between h-11 px-3">
-          <h2 className="text-[13px] font-sans font-semibold text-[var(--fg)] tracking-tight">
-            Administration
-          </h2>
+        {/* Concave notches on the right edge */}
+        <div
+          className="absolute right-0 top-0 h-6 w-6 rounded-br-full bg-[var(--bg-card)]"
+          aria-hidden="true"
+        />
+        <div
+          className="absolute right-0 bottom-0 h-6 w-6 rounded-tr-full bg-[var(--bg-card)]"
+          aria-hidden="true"
+        />
+
+        {/* Mobile close */}
+        <div className="shrink-0 flex items-center justify-end h-11 px-3 lg:hidden">
           <button
             onClick={close}
-            className="lg:hidden w-7 h-7 rounded-lg flex items-center justify-center text-[#555] hover:text-[var(--fg)] hover:bg-white/[0.06] transition-all"
+            className="w-7 h-7 rounded-lg flex items-center justify-center text-[#555] hover:text-[var(--fg)] hover:bg-white/[0.06] transition-all"
             aria-label="Close admin navigation"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -59,86 +98,50 @@ export function AdminSidebar() {
           </button>
         </div>
 
-        {/* Body */}
-        <div className="flex-1 overflow-y-auto overflow-x-hidden px-3 space-y-2.5" style={{ scrollbarWidth: 'thin', scrollbarColor: '#222 transparent' }}>
-          <div className="space-y-1">
-            <p className="text-[9px] font-sans font-medium text-[#555] uppercase tracking-widest px-1 pt-1">
-              Menu
-            </p>
-            {links.map((link, i) => {
-              const active =
-                link.to === '/admin'
-                  ? location.pathname === '/admin'
-                  : location.pathname.startsWith(link.to)
-              const isHovered = hovered === link.to
-              const showChevron = active || isHovered
+        <nav
+          ref={navRef}
+          className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-3 relative"
+          aria-label="Admin navigation"
+          onMouseLeave={() => snapToActive()}
+        >
+          {/* Floating hover/active pill */}
+          <div
+            aria-hidden="true"
+            className="absolute left-3 right-3 rounded-lg bg-[var(--fg)]/10 pointer-events-none"
+            style={{
+              top: `${navHover.top}px`,
+              height: `${navHover.height}px`,
+              opacity: navHover.opacity,
+              transition: 'all 0.25s cubic-bezier(0.22, 1, 0.36, 1)',
+            }}
+          />
 
+          <div className="relative space-y-0.5">
+            {links.map((link) => {
+              const active = isActive(link.to)
               return (
-                <div
+                <Link
                   key={link.to}
-                  className="relative"
-                  style={{
-                    animation: `slideUpFade 0.25s cubic-bezier(0.16, 1, 0.3, 1) ${i * 0.03}s forwards`,
-                    opacity: 0,
-                  }}
+                  to={link.to}
+                  data-nav={link.to}
+                  onClick={close}
+                  onMouseEnter={handleMouseEnter}
+                  className={cn(
+                    'relative z-10 block px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200',
+                    active
+                      ? 'text-[var(--fg)]'
+                      : 'text-[var(--fg-muted)] hover:text-[var(--fg)]',
+                  )}
                 >
-                  <Link
-                    to={link.to}
-                    onClick={close}
-                    onMouseEnter={() => setHovered(link.to)}
-                    onMouseLeave={() => setHovered(null)}
-                    className={cn(
-                      'w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-left transition-all duration-200',
-                      active
-                        ? 'bg-white/[0.1] scale-[1.02]'
-                        : isHovered
-                          ? 'bg-white/[0.08] scale-[1.02]'
-                          : 'bg-white/[0.02] hover:bg-white/[0.05]',
-                    )}
-                  >
-                    <span
-                      className={cn(
-                        'text-[12px] font-sans font-medium transition-colors flex-1 min-w-0 truncate',
-                        active || isHovered ? 'text-[var(--fg)]' : 'text-[var(--fg-secondary)]',
-                      )}
-                    >
-                      {link.label}
-                    </span>
-
-                    <div
-                      className={cn(
-                        'transition-all duration-200',
-                        showChevron ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-2',
-                      )}
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M5 12h14M12 5l7 7-7 7" />
-                      </svg>
-                    </div>
-                  </Link>
-                </div>
+                  {link.label}
+                </Link>
               )
             })}
           </div>
-        </div>
-
-        {/* Bottom actions */}
-        <div className="shrink-0 px-3 py-2.5 space-y-1.5 border-t border-white/[0.06]">
-          <button
-            onClick={() => navigate('/')}
-            className="w-full flex items-center justify-center gap-1.5 h-9 rounded-lg border border-dashed border-white/[0.1] text-[#888] hover:text-[var(--fg)] hover:border-white/[0.2] hover:bg-white/[0.06] transition-all font-sans text-[12px] font-medium"
-          >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
-              <path d="M9 22V12h6v10" />
-            </svg>
-            Back to panel
-          </button>
-        </div>
+        </nav>
       </aside>
 
-      {/* Backdrop for mobile */}
-      {mobileOpen && (
+      {admin?.open && (
         <div
           className="fixed inset-0 z-30 lg:hidden"
           style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}

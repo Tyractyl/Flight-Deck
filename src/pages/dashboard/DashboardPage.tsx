@@ -8,15 +8,29 @@ import { useAuthStore } from '../../store/authStore'
 import { getBalance } from '../../api/coins'
 import { sileo } from 'sileo'
 import Button from '../../components/Button'
-
 import { DataTable } from '../../components/DataTable'
-import { ResourceStats } from '../../components/dashboard/ResourceStats'
 import { ActivityLog } from '../../components/dashboard/ActivityLog'
+import { StatCard } from '../../components/dashboard/StatCard'
+import { SimpleLineChart } from '../../components/dashboard/SimpleLineChart'
+import { RingChart } from '../../components/dashboard/RingChart'
+import { Gauge } from '../../components/dashboard/Gauge'
+import { CpuIcon, HardDriveIcon, RamMemoryIcon, McpServerIcon } from '@hugeicons/core-free-icons'
 
 function formatMemory(mb: number): string {
   if (mb >= 1024) return `${(mb / 1024).toFixed(mb % 1024 === 0 ? 0 : 1).replace(/\.0$/, '')} GiB`
   return `${mb} MiB`
 }
+
+// Sample 7-day activity data until we have real time-series API
+const sampleActivityData = [
+  { day: 'Mon', cpu: 24 },
+  { day: 'Tue', cpu: 38 },
+  { day: 'Wed', cpu: 18 },
+  { day: 'Thu', cpu: 45 },
+  { day: 'Fri', cpu: 32 },
+  { day: 'Sat', cpu: 55 },
+  { day: 'Sun', cpu: 41 },
+]
 
 export default function DashboardPage() {
   const navigate = useNavigate()
@@ -63,13 +77,24 @@ export default function DashboardPage() {
   const serverList = Array.isArray(servers) ? servers : []
   const [search, setSearch] = useState('')
   const filteredServers = serverList.filter((server) =>
-    server.name.toLowerCase().includes(search.toLowerCase())
+    server.name.toLowerCase().includes(search.toLowerCase()),
   )
+
+  const totalMemory = serverList.reduce((sum, s) => sum + s.memory_mb, 0)
+  const totalDisk = serverList.reduce((sum, s) => sum + s.disk_mb, 0)
+  const totalCpu = serverList.reduce((sum, s) => sum + s.cpu_percent, 0)
+  const runningCount = serverList.filter((s) => s.status === 'RUNNING').length
+
+  const statusRing = [
+    { name: 'Running', value: runningCount },
+    { name: 'Stopped', value: serverList.length - runningCount },
+  ]
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold text-[var(--fg)]">Welcome to Flight Deck, {user?.username || 'there'}</h1>
+        <p className="text-sm text-[var(--fg-muted)] mt-1">Overview of your servers, resources, and activity.</p>
       </div>
 
       {isLoading ? (
@@ -79,36 +104,48 @@ export default function DashboardPage() {
         </div>
       ) : (
         <>
-          {/* Resource stats bar */}
-          <div className="rounded-2xl border border-[var(--border-strong)] bg-[var(--bg-card)] p-4">
-            <ResourceStats servers={serverList} />
+          {/* Stats row */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <StatCard title="Servers" value={serverList.length} icon={McpServerIcon} />
+            <StatCard title="Running" value={runningCount} icon={CpuIcon} />
+            <StatCard title="Memory" value={`${totalMemory} MB`} icon={RamMemoryIcon} />
+            <StatCard title="Disk" value={`${totalDisk} MB`} icon={HardDriveIcon} />
+          </div>
+
+          {/* Charts */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <SimpleLineChart
+              title="CPU Activity (7 days)"
+              data={sampleActivityData}
+              dataKey="cpu"
+              xDataKey="day"
+              className="lg:col-span-2"
+            />
+            <div className="space-y-4">
+              <RingChart title="Server Status" data={statusRing} />
+              <Gauge
+                title="Avg CPU"
+                value={serverList.length ? Math.min(100, Math.round(totalCpu / serverList.length)) : 0}
+                label="across all servers"
+              />
+            </div>
           </div>
 
           {/* Account + activity */}
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(280px,320px)]">
-            {/* Account info card */}
-            <div className="rounded-2xl border border-[var(--border-strong)] bg-[var(--bg-card)] flex flex-col h-full">
-              <div className="p-5 pb-2">
-                <div className="bg-[var(--bg-elevated)] rounded-xl border border-[var(--border-strong)] h-10 w-10 flex items-center justify-center">
-                  <span className="text-sm font-semibold text-[var(--fg-muted)]">
+            <div className="rounded-2xl border border-[var(--border-strong)] bg-[var(--bg-card)] p-5">
+              <div className="flex items-center gap-4">
+                <div className="bg-[var(--bg-elevated)] rounded-xl border border-[var(--border-strong)] h-12 w-12 flex items-center justify-center">
+                  <span className="text-lg font-semibold text-[var(--fg-muted)]">
                     {user?.username?.charAt(0).toUpperCase() || 'U'}
                   </span>
                 </div>
-                <h3 className="text-base mt-4 text-[var(--fg)]">Account Overview</h3>
-                <p className="text-sm mt-2 text-[var(--fg-muted)] leading-relaxed">
-                  Welcome back. You have <span className="font-semibold text-[var(--fg)]">{balanceData?.balance ?? 0}</span> coins and <span className="font-semibold text-[var(--fg)]">{serverList.length}</span> server{serverList.length !== 1 ? 's' : ''}.
-                </p>
-              </div>
-              <div className="mt-auto p-5 pt-0 flex items-center gap-3">
-                <div className="flex -space-x-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl border-2 border-[var(--bg-card)] text-xs font-medium uppercase shadow-sm bg-yellow-500 text-yellow-800">
-                    {user?.username?.charAt(0).toUpperCase() || 'U'}
-                  </div>
-                  {[1, 2, 3].map((i) => (
-                    <div key={i} className="flex h-10 w-10 items-center justify-center rounded-xl border-2 border-[var(--bg-card)] text-xs font-medium uppercase text-[var(--fg)]/50 shadow-sm bg-neutral-500">
-                      --
-                    </div>
-                  ))}
+                <div>
+                  <h3 className="text-base font-semibold text-[var(--fg)]">Account Overview</h3>
+                  <p className="text-sm text-[var(--fg-muted)]">
+                    You have <span className="font-semibold text-[var(--fg)]">{balanceData?.balance ?? 0}</span> coins and{' '}
+                    <span className="font-semibold text-[var(--fg)]">{serverList.length}</span> server{serverList.length !== 1 ? 's' : ''}.
+                  </p>
                 </div>
               </div>
             </div>
@@ -184,42 +221,42 @@ export default function DashboardPage() {
                   const isRunning = server.status === 'RUNNING' || server.status === 'STARTING'
                   return (
                     <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
-                        {isRunning ? (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => stopMutation.mutate(server.id)}
-                              className="inline-flex items-center justify-center p-1 text-[var(--fg-muted)] hover:text-[var(--fg)] transition-colors"
-                              title="Stop"
-                            >
-                              <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
-                                <rect x="6" y="6" width="12" height="12" rx="2" />
-                              </svg>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => restartMutation.mutate(server.id)}
-                              className="inline-flex items-center justify-center p-1 text-[var(--fg-muted)] hover:text-[var(--fg)] transition-colors"
-                              title="Restart"
-                            >
-                              <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
-                                <path d="M17.65 6.35A7.95 7.95 0 0012 4a8 8 0 00-8 8 8 8 0 008 8 8 8 0 006.06-2.79l-1.56-1.34A6.02 6.02 0 0112 18a6 6 0 01-6-6 6 6 0 016-6 5.96 5.96 0 014.95 2.55L13 11h7V4l-2.35 2.35z" />
-                              </svg>
-                            </button>
-                          </>
-                        ) : (
+                      {isRunning ? (
+                        <>
                           <button
                             type="button"
-                            onClick={() => startMutation.mutate(server.id)}
+                            onClick={() => stopMutation.mutate(server.id)}
                             className="inline-flex items-center justify-center p-1 text-[var(--fg-muted)] hover:text-[var(--fg)] transition-colors"
-                            title="Start"
+                            title="Stop"
                           >
                             <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
-                              <path d="M8 5v14l11-7z" />
+                              <rect x="6" y="6" width="12" height="12" rx="2" />
                             </svg>
                           </button>
-                        )}
-                      </div>
+                          <button
+                            type="button"
+                            onClick={() => restartMutation.mutate(server.id)}
+                            className="inline-flex items-center justify-center p-1 text-[var(--fg-muted)] hover:text-[var(--fg)] transition-colors"
+                            title="Restart"
+                          >
+                            <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
+                              <path d="M17.65 6.35A7.95 7.95 0 0012 4a8 8 0 00-8 8 8 8 0 008 8 8 8 0 006.06-2.79l-1.56-1.34A6.02 6.02 0 0112 18a6 6 0 01-6-6 6 6 0 016-6 5.96 5.96 0 014.95 2.55L13 11h7V4l-2.35 2.35z" />
+                            </svg>
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => startMutation.mutate(server.id)}
+                          className="inline-flex items-center justify-center p-1 text-[var(--fg-muted)] hover:text-[var(--fg)] transition-colors"
+                          title="Start"
+                        >
+                          <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
+                            <path d="M8 5v14l11-7z" />
+                          </svg>
+                        </button>
+                      )}
+                    </div>
                   )
                 },
               },

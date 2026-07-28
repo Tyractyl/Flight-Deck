@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
 import { useThemeStore } from '../../store/themeStore';
 import { useBrandingStore } from '../../store/brandingStore';
+import { useAdminSidebar } from '../admin/AdminSidebarContext';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { CircleDollarSignIcon, UserIcon } from '@hugeicons/core-free-icons';
 import { sileo } from 'sileo';
@@ -29,6 +30,7 @@ export function FrameLayout({ children }: { children?: React.ReactNode }) {
   const { settings: branding, fetch: fetchBranding } = useBrandingStore();
   const [navHover, setNavHover] = useState({ left: 0, width: 0, opacity: 0 });
   const [dropdownHover, setDropdownHover] = useState({ top: 0, height: 0, opacity: 0, variant: 'default' });
+  const admin = useAdminSidebar();
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -110,10 +112,22 @@ export function FrameLayout({ children }: { children?: React.ReactNode }) {
       {/* Header */}
       <header className="relative z-[100] h-16 px-5 flex items-center shrink-0 bg-[var(--bg)]/80 backdrop-blur-md" aria-label="Top navigation">
         <div className="flex items-center justify-between w-full">
-          <Link
-            to="/"
-            className="group relative flex items-center gap-3 shrink-0 rounded-xl"
-          >
+          <div className="flex items-center gap-3">
+            {admin && (
+              <button
+                onClick={() => admin?.toggle()}
+                className="lg:hidden w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/[0.06] transition-colors text-[var(--fg)]"
+                aria-label="Toggle admin navigation"
+              >
+                <svg width="18" height="14" viewBox="0 0 18 14" fill="none">
+                  <path d="M1 1H17M1 7H17M1 13H17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                </svg>
+              </button>
+            )}
+            <Link
+              to="/"
+              className="group relative flex items-center gap-3 shrink-0 rounded-xl"
+            >
             <div className="relative w-14 h-14">
               {/* Shape-following ring behind the logo */}
               {branding.logo_ring_enabled && (
@@ -140,8 +154,9 @@ export function FrameLayout({ children }: { children?: React.ReactNode }) {
               />
             </div>
           </Link>
+        </div>
 
-          {/* Center nav - desktop */}
+        {/* Center nav - desktop */}
           <nav
             ref={navRef}
             className="hidden sm:flex items-center gap-1 relative"
