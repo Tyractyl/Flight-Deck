@@ -13,5 +13,6 @@ export interface TenantMember {
   role: 'owner' | 'admin' | 'member'
   username?: string
   email?: string
+  avatar_url?: string | null
   joined_at: string
 }

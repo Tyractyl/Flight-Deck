@@ -8,6 +8,7 @@ import { sileo } from 'sileo'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { RamMemoryIcon, CpuIcon, PlayIcon, PauseIcon, RefreshIcon, CopyIcon, CheckIcon } from '@hugeicons/core-free-icons'
 import Button from '../../components/Button'
+import { formatMemory } from '../../utils/formatMemory'
 
 const statusColors: Record<string, string> = {
   RUNNING: 'bg-emerald-500',
@@ -27,11 +28,6 @@ function StatusDot({ status }: { status: string }) {
       <span className={`relative inline-flex h-2.5 w-2.5 rounded-full ${color}`} />
     </span>
   )
-}
-
-function formatMemory(mb: number): string {
-  if (mb >= 1024) return `${(mb / 1024).toFixed(0)} GiB`
-  return `${mb} MiB`
 }
 
 export default function ServersPage() {

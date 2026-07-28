@@ -26,17 +26,29 @@ export default function AdminBrandingPage() {
   const { settings, update, isLoading } = useBrandingStore()
   const [enabled, setEnabled] = useState(settings.logo_ring_enabled)
   const [color, setColor] = useState(settings.logo_ring_color)
+  const [showStatusCard, setShowStatusCard] = useState(settings.show_status_card)
+  const [announcementEnabled, setAnnouncementEnabled] = useState(settings.announcement_enabled)
+  const [announcementText, setAnnouncementText] = useState(settings.announcement_text)
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     setEnabled(settings.logo_ring_enabled)
     setColor(settings.logo_ring_color)
-  }, [settings.logo_ring_enabled, settings.logo_ring_color])
+    setShowStatusCard(settings.show_status_card)
+    setAnnouncementEnabled(settings.announcement_enabled)
+    setAnnouncementText(settings.announcement_text)
+  }, [settings])
 
   const handleSave = async () => {
     setSaving(true)
     try {
-      await update({ logo_ring_enabled: enabled, logo_ring_color: color })
+      await update({
+        logo_ring_enabled: enabled,
+        logo_ring_color: color,
+        show_status_card: showStatusCard,
+        announcement_enabled: announcementEnabled,
+        announcement_text: announcementText,
+      })
       sileo.success({ description: 'Branding settings saved', icon: false })
     } catch {
       sileo.error({ description: 'Failed to save branding settings', icon: false })
@@ -48,6 +60,9 @@ export default function AdminBrandingPage() {
   const handleReset = () => {
     setEnabled(settings.logo_ring_enabled)
     setColor(settings.logo_ring_color)
+    setShowStatusCard(settings.show_status_card)
+    setAnnouncementEnabled(settings.announcement_enabled)
+    setAnnouncementText(settings.announcement_text)
   }
 
   return (
@@ -81,6 +96,26 @@ export default function AdminBrandingPage() {
                 className="h-10 flex-1 rounded-lg border border-[var(--border-strong)] bg-[var(--bg-elevated)] px-3 text-sm text-[var(--fg)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
               />
             </div>
+          </div>
+
+          <div className="flex items-center justify-between py-4 border-b border-[var(--border)]">
+            <span className="text-sm text-[var(--fg)]">Show status card</span>
+            <Toggle checked={showStatusCard} onChange={setShowStatusCard} />
+          </div>
+
+          <div className="flex items-center justify-between py-4 border-b border-[var(--border)]">
+            <span className="text-sm text-[var(--fg)]">Enable announcement</span>
+            <Toggle checked={announcementEnabled} onChange={setAnnouncementEnabled} />
+          </div>
+
+          <div className="py-4">
+            <label className="block text-xs font-medium text-[var(--fg-muted)] mb-2">Announcement text</label>
+            <textarea
+              value={announcementText}
+              onChange={(e) => setAnnouncementText(e.target.value)}
+              rows={3}
+              className="w-full rounded-lg border border-[var(--border-strong)] bg-[var(--bg-elevated)] px-3 py-2 text-sm text-[var(--fg)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] resize-none"
+            />
           </div>
 
           <div className="flex items-center justify-end gap-3 pt-4">

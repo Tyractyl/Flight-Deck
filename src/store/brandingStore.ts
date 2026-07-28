@@ -12,6 +12,9 @@ interface BrandingState {
 const defaultSettings: BrandingSettings = {
   logo_ring_enabled: true,
   logo_ring_color: '#ffffff',
+  show_status_card: true,
+  announcement_enabled: false,
+  announcement_text: '',
 }
 
 export const useBrandingStore = create<BrandingState>((set, get) => ({
@@ -23,7 +26,7 @@ export const useBrandingStore = create<BrandingState>((set, get) => ({
     set({ isLoading: true, error: null })
     try {
       const settings = await getPublicSettings()
-      set({ settings, isLoading: false })
+      set({ settings: { ...defaultSettings, ...settings }, isLoading: false })
     } catch (err) {
       set({ error: 'Failed to load branding settings', isLoading: false })
     }

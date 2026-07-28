@@ -4,6 +4,7 @@ import { CheckIcon, ChevronLeft, ChevronRight, MinusIcon, Search, Trash2, XIcon 
 import { Skeleton } from 'parthenon-ui/components';
 import type { ReactNode } from 'react';
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Checkbox as CheckboxPrimitive } from 'radix-ui';
 import { PlaceholderPattern } from '@/components/ui/PlaceholderPattern';
 
@@ -82,7 +83,7 @@ function Checkbox({
         <CheckboxPrimitive.Root
             data-slot="checkbox"
             className={cn(
-                'peer size-4 shrink-0 border border-input/70 bg-muted/80 text-transparent shadow-[0_1px_2px_rgba(0,0,0,0.06)] transition-all outline-none data-[state=checked]:border-transparent data-[state=checked]:bg-brand data-[state=checked]:text-brand-foreground data-[state=indeterminate]:border-transparent data-[state=indeterminate]:bg-brand data-[state=indeterminate]:text-brand-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50',
+                'peer size-4 shrink-0 rounded border border-[var(--fg-muted)]/40 bg-[var(--bg-card)] text-transparent transition-all outline-none data-[state=checked]:border-[var(--accent)] data-[state=checked]:bg-[var(--accent)] data-[state=checked]:text-[var(--accent-foreground)] data-[state=indeterminate]:border-[var(--accent)] data-[state=indeterminate]:bg-[var(--accent)] data-[state=indeterminate]:text-[var(--accent-foreground)] focus-visible:ring-[3px] focus-visible:ring-[var(--accent)]/40 disabled:cursor-not-allowed disabled:opacity-50',
                 className,
             )}
             style={{ borderRadius: 6 }}
@@ -524,13 +525,13 @@ function BulkActionBar({
 }) {
     const plural = count === 1 ? entityName : `${entityName}s`;
 
-    return (
+    const bar = (
         <>
             {/* Subtle bottom gradient */}
             <div
                 aria-hidden="true"
                 className={cn(
-                    'pointer-events-none fixed inset-x-0 bottom-0 z-40 h-24 bg-gradient-to-t from-background/80 to-transparent transition-opacity duration-300 ease-out',
+                    'pointer-events-none fixed inset-x-0 bottom-0 z-40 h-24 bg-gradient-to-t from-[var(--bg)]/80 to-transparent transition-opacity duration-300 ease-out',
                     count > 0 ? 'opacity-100' : 'opacity-0',
                 )}
             />
@@ -544,11 +545,11 @@ function BulkActionBar({
                         : 'translate-y-full opacity-0',
                 )}
             >
-                <div className="pointer-events-auto mb-6 flex items-center gap-3 rounded-xl border border-border/70 bg-background px-4 py-2.5 shadow-lg">
-                    <span className="text-xs font-medium text-muted-foreground">
+                <div className="pointer-events-auto mb-6 flex items-center gap-3 rounded-xl border border-[var(--border-strong)] bg-[var(--bg-card)] px-4 py-2.5 shadow-lg">
+                    <span className="text-xs font-medium text-[var(--fg-muted)]">
                         {count} {plural} selected
                     </span>
-                    <div className="h-4 w-px bg-border" />
+                    <div className="h-4 w-px bg-[var(--border)]" />
                     <Button
                         size="table"
                         variant="destructive"
@@ -561,7 +562,7 @@ function BulkActionBar({
                     <button
                         type="button"
                         onClick={onCancel}
-                        className="cursor-pointer text-xs text-muted-foreground transition-colors hover:text-foreground"
+                        className="cursor-pointer text-xs text-[var(--fg-muted)] transition-colors hover:text-[var(--fg)]"
                     >
                         Cancel
                     </button>
@@ -569,6 +570,8 @@ function BulkActionBar({
             </div>
         </>
     );
+
+    return createPortal(bar, document.body);
 }
 
 // ─── Confirm delete dialog ───────────────────────────────────────────────────
@@ -643,15 +646,16 @@ function DataTableRow<T extends { id: string | number }>({
         <div
             className={cn(
                 'group relative overflow-hidden rounded-lg transition-colors duration-150 ease-out',
-                isSelected
-                    ? 'bg-brand/15 dark:bg-brand/25 ring-2 ring-inset ring-brand/60'
-                    : ''
+                isSelected ? 'bg-[var(--accent)]/10' : ''
             )}
         >
-            <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-lg opacity-0 transition-opacity group-hover:opacity-100">
+            <div className={cn(
+                'pointer-events-none absolute inset-0 overflow-hidden rounded-lg transition-opacity',
+                isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+            )}>
                 <PlaceholderPattern
                     patternSize={6}
-                    className="size-full stroke-neutral-900/10 dark:stroke-neutral-100/10"
+                    className="size-full stroke-[var(--fg)]/10"
                 />
             </div>
             <div

@@ -4,6 +4,9 @@
 @theme {
   --font-sans: 'Nunito Variable', 'Nunito', ui-sans-serif, system-ui, sans-serif;
   --font-nunito: 'Nunito Variable', 'Nunito', ui-sans-serif, system-ui, sans-serif;
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-muted-foreground: var(--muted-foreground);
 }
 
 @layer base {

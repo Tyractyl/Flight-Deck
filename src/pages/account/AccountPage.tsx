@@ -9,6 +9,7 @@ import type { UserSession } from '../../api/sessions'
 import { listAuditLogs } from '../../api/audit'
 import type { AuditLog } from '../../api/audit'
 import api from '../../api/client'
+import { uploadAvatar } from '../../api/auth'
 import Button from '../../components/Button'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../../components/ui/Tabs'
 import { Skeleton } from 'parthenon-ui/components'
@@ -20,6 +21,7 @@ import {
 } from '@hugeicons/core-free-icons'
 import Avatar from 'boring-avatars'
 import { Input } from '../../components/ui/Input'
+import type { User } from '../../types/server'
 
 function ProfileSection() {
   const user = useAuthStore((s) => s.user)
@@ -470,6 +472,24 @@ function DangerZoneSection() {
 
 export default function AccountPage() {
   const user = useAuthStore((s) => s.user)
+  const updateUser = useAuthStore((s) => s.updateUser)
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
+  const avatarInputRef = useRef<HTMLInputElement>(null)
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploadingAvatar(true)
+    try {
+      const result = await uploadAvatar(file)
+      updateUser({ ...user!, avatar_url: result.avatar_url } as User)
+      sileo.success({ description: 'Avatar updated', icon: false })
+    } catch {
+      sileo.error({ description: 'Failed to upload avatar', icon: false })
+    } finally {
+      setUploadingAvatar(false)
+    }
+  }
 
   const { data: balanceData, isLoading } = useQuery({
     queryKey: queryKeys.coins.balance,
@@ -479,17 +499,47 @@ export default function AccountPage() {
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       <div className="flex items-center gap-4">
-        <div className="h-16 w-16 rounded-2xl overflow-hidden">
-          <Avatar
-            size={64}
-            name={user?.username || 'user'}
-            variant="beam"
-            colors={['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981']}
+        <button
+          type="button"
+          onClick={() => avatarInputRef.current?.click()}
+          disabled={uploadingAvatar}
+          className="relative h-16 w-16 rounded-2xl overflow-hidden group cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {user?.avatar_url ? (
+            <img
+              src={user.avatar_url}
+              alt=""
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <Avatar
+              size={64}
+              name={user?.username || 'user'}
+              variant="beam"
+              colors={['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981']}
+            />
+          )}
+          <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+            <span className="text-white text-[10px] font-medium">{uploadingAvatar ? '...' : 'Change'}</span>
+          </div>
+          <input
+            ref={avatarInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleAvatarChange}
           />
-        </div>
+        </button>
         <div>
           <h1 className="text-2xl font-semibold text-[var(--fg)]">{user?.username || 'User'}</h1>
           <p className="text-base text-[var(--fg-muted)]">{user?.email}</p>
+          <button
+            type="button"
+            onClick={() => avatarInputRef.current?.click()}
+            className="text-xs text-[var(--accent)] hover:underline mt-1"
+          >
+            Upload avatar
+          </button>
         </div>
       </div>
 

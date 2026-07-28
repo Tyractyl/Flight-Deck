@@ -15,6 +15,15 @@ export async function logout() {
   await api.post('/auth/logout')
 }
 
+export async function uploadAvatar(file: File) {
+  const formData = new FormData()
+  formData.append('avatar', file)
+  const { data } = await api.post('/users/me/avatar', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+  return data as { avatar_url: string }
+}
+
 export async function getMe() {
   const { data } = await api.get('/users/me')
   return data as User

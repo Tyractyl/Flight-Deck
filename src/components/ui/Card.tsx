@@ -1,39 +1,75 @@
-import { type ReactNode, type MouseEvent } from 'react'
+import * as React from "react"
 
-interface CardProps {
-  children: ReactNode
-  className?: string
-  onClick?: (e: MouseEvent<HTMLDivElement>) => void
-}
+import { cn } from "../../utils/cn"
 
-export function Card({ children, className = '', onClick }: CardProps) {
+function Card({ className, children, ...props }: React.ComponentProps<"div">) {
   return (
-    <div onClick={onClick} className={`bg-[var(--bg-card)] rounded-xl border border-theme ${className}`}>
-      {children}
+    <div
+      data-slot="card"
+      className={cn(
+        "rounded-md bg-[var(--bg-elevated)] p-1",
+        className
+      )}
+      {...props}
+    >
+      <div
+        data-slot="card-inner"
+        className="flex flex-1 flex-col rounded-md border border-[var(--border-strong)] bg-[var(--bg-card)] py-6 text-[var(--fg)] shadow-sm"
+      >
+        {children}
+      </div>
     </div>
   )
 }
 
-export function CardHeader({ children, className = '' }: CardProps) {
+function CardHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
-    <div className={`px-5 py-4 border-b border-theme ${className}`}>
-      {children}
-    </div>
+    <div
+      data-slot="card-header"
+      className={cn("flex flex-col gap-1.5 px-6", className)}
+      {...props}
+    />
   )
 }
 
-export function CardContent({ children, className = '', onClick }: CardProps) {
+function CardTitle({ className, ...props }: React.ComponentProps<"div">) {
   return (
-    <div onClick={onClick} className={`p-5 ${className}`}>
-      {children}
-    </div>
+    <div
+      data-slot="card-title"
+      className={cn("leading-none font-semibold", className)}
+      {...props}
+    />
   )
 }
 
-export function CardTitle({ children, className = '' }: CardProps) {
+function CardDescription({ className, ...props }: React.ComponentProps<"div">) {
   return (
-    <h3 className={`text-base font-semibold text-[var(--fg)] ${className}`}>
-      {children}
-    </h3>
+    <div
+      data-slot="card-description"
+      className={cn("text-[var(--fg-muted)] text-sm", className)}
+      {...props}
+    />
   )
 }
+
+function CardContent({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="card-content"
+      className={cn("px-6", className)}
+      {...props}
+    />
+  )
+}
+
+function CardFooter({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="card-footer"
+      className={cn("flex items-center px-6", className)}
+      {...props}
+    />
+  )
+}
+
+export { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent }

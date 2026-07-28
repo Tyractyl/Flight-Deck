@@ -75,7 +75,7 @@ export function AdminSidebar() {
           admin?.open ? 'max-lg:translate-x-0' : 'max-lg:-translate-x-full',
         )}
       >
-        {/* Concave notches on the right edge */}
+        {/* Concave notches on the right edge — use the card bg so the cutout is visible */}
         <div
           className="absolute right-0 top-0 h-6 w-6 rounded-br-full bg-[var(--bg-card)]"
           aria-hidden="true"
