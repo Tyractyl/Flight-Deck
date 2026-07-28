@@ -1,0 +1,317 @@
+@import "tw-animate-css";
+@import "@fontsource-variable/nunito";
+
+@theme {
+  --font-sans: 'Nunito Variable', 'Nunito', ui-sans-serif, system-ui, sans-serif;
+  --font-nunito: 'Nunito Variable', 'Nunito', ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  html {
+    color-scheme: dark;
+  }
+
+  html.dark {
+    color-scheme: dark;
+  }
+
+  html.light {
+    color-scheme: light;
+  }
+
+  html, body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-sans);
+    overscroll-behavior: none;
+  }
+
+  ::selection {
+    background-color: var(--accent);
+    color: var(--accent-foreground);
+  }
+
+  body {
+    margin: 0;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    appearance: none;
+    background: transparent;
+    border: 0;
+    outline: none;
+  }
+
+  input:not([type='checkbox']):not([type='radio']),
+  select,
+  textarea {
+    border: 1px solid var(--border-strong);
+  }
+
+  /* Override Tailwind v4's default border-color with our theme border */
+  *,
+  *::before,
+  *::after {
+    border-color: var(--border);
+  }
+}
+
+.auth-input-wrapper::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 5px;
+  box-shadow: 0 0 0 1px #000, 0 0 0 1px rgba(0, 51, 255, 0.6);
+  opacity: 0;
+  transition: all 0.2s ease-in-out;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.auth-input-wrapper:focus-within::after {
+  box-shadow: 0 0 0 1px #000, 0 0 0 3px rgba(0, 51, 255, 0.6);
+  opacity: 1;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+@keyframes fade-in {
+  0% {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes fade-up {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes slideUpFade {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes dropdownIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.95) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes shimmer-diagonal {
+  0% {
+    transform: translateX(-150%) skewX(-15deg);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(250%) skewX(-15deg);
+    opacity: 0;
+  }
+}
+
+@keyframes shine-sweep {
+  0% {
+    transform: translateX(-100%) skewX(-12deg);
+  }
+  100% {
+    transform: translateX(200%) skewX(-12deg);
+  }
+}
+
+@keyframes dropdown-expand {
+  0% {
+    opacity: 0;
+    transform: scale(0.96) translateY(-6px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Sileo-style spring easing for menus/toasts */
+:root {
+  --sileo-spring-easing: linear(
+    0, 0.002 0.6%, 0.007 1.2%, 0.015 1.8%, 0.026 2.4%, 0.041 3.1%,
+    0.06 3.8%, 0.108 5.3%, 0.157 6.6%, 0.214 8%, 0.467 13.7%,
+    0.577 16.3%, 0.631 17.7%, 0.682 19.1%, 0.73 20.5%, 0.771 21.8%,
+    0.808 23.1%, 0.844 24.5%, 0.874 25.8%, 0.903 27.2%, 0.928 28.6%,
+    0.952 30.1%, 0.972 31.6%, 0.988 33.1%, 1.01 35.7%, 1.025 38.5%,
+    1.034 41.6%, 1.038 45%, 1.035 50.1%, 1.012 64.2%, 1.003 73%,
+    0.999 83.7%, 1
+  );
+}
+
+@keyframes dropdown-shrink {
+  0% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.96) translateY(-6px);
+  }
+}
+
+/* Theme-aware border utilities — @utility for Tailwind v4 compatibility */
+@utility border-theme {
+  border-color: var(--border);
+}
+
+@utility border-theme-strong {
+  border-color: var(--border-strong);
+}
+
+@utility ring-theme-strong {
+  --tw-ring-color: var(--border-strong);
+}
+
+@utility border-accent-theme {
+  border-color: var(--accent);
+}
+
+/* Hide scrollbars cleanly */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/*
+ * ════════════════════════════════════════════════════════════════
+ *  THEME VARIABLES — placed LAST so they override parthenon-ui's
+ *  conflicting --border / --bg / --fg definitions.
+ * ════════════════════════════════════════════════════════════════
+ */
+
+:root {
+  --animate-spin: spin 1s linear infinite;
+  --background: #0a0a0a;
+  --foreground: #fafafa;
+  --card: #0a0a0a;
+  --card-foreground: #fafafa;
+  --popover: #0a0a0a;
+  --popover-foreground: #fafafa;
+  --primary: #fafafa;
+  --primary-foreground: #171717;
+  --secondary: #262626;
+  --secondary-foreground: #fafafa;
+  --muted: #262626;
+  --muted-foreground: #a3a3a3;
+  --accent: #262626;
+  --accent-foreground: #fafafa;
+  --destructive: #ef4444;
+  --destructive-foreground: #fafafa;
+  --border: #262626;
+  --input: #262626;
+  --ring: #525252;
+}
+
+/* Dark theme (default) */
+.dark, :root {
+  --bg: #000000;
+  --bg-card: #111111;
+  --bg-card-hover: #1a1a1a;
+  --bg-input: #1a1a1a;
+  --bg-elevated: #1e1e1e;
+  --fg: #ffffff;
+  --fg-secondary: #b1b2ae;
+  --fg-muted: #888888;
+  --fg-faint: #555555;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.15);
+  --accent: #3b82f6;
+  --accent-foreground: #fff;
+  --destructive: #ff4444;
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --surface: #111111;
+  --surface-hover: #1a1a1a;
+}
+
+/* Light theme */
+.light {
+  --bg: #f4f4f5;
+  --bg-card: #ffffff;
+  --bg-card-hover: #fafafa;
+  --bg-input: #f4f4f5;
+  --bg-elevated: #ffffff;
+  --fg: #09090b;
+  --fg-secondary: #3f3f46;
+  --fg-muted: #71717a;
+  --fg-faint: #a1a1aa;
+  --border: rgba(0, 0, 0, 0.08);
+  --border-strong: rgba(0, 0, 0, 0.15);
+  --accent: #3b82f6;
+  --accent-foreground: #fff;
+  --destructive: #ef4444;
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --surface: #ffffff;
+  --surface-hover: #f4f4f5;
+}
+
+/* Force theme border override */
+:root,
+.dark {
+  --border: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.15);
+}
+
+.light {
+  --border: rgba(0, 0, 0, 0.08);
+  --border-strong: rgba(0, 0, 0, 0.15);
+}
