@@ -62,7 +62,7 @@
   --am-key-shadow: 0 1.5px 0 #050505, inset 0 1px 0 rgba(255, 255, 255, 0.1);
   --am-key-text: #b8b8b8;
   --am-key-text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.5);
-  --am-hl: rgba(255, 255, 255, 0.07);
+  --am-hl: rgba(255, 255, 255, 0.09);
   --am-hl-dark: #090909;
   --am-hl-danger: #2b1618;
   --am-danger-icon: #ff7a7a;
@@ -219,8 +219,6 @@
     background 0.2s,
     opacity 0.15s;
 }
-.am-hl.am-hl-dark { background: var(--am-hl-dark); }
-.am-hl.am-hl-danger { background: var(--am-hl-danger); }
 .am-keys { display: flex; gap: 2px; align-items: center; }
 .am-sub {
   position: absolute;
@@ -372,4 +370,11 @@ button.am-row {
     transition-duration: 0.01s !important;
     animation-duration: 0.01s !important;
   }
+}
+
+/* The theme pill slides between Light/Dark/Auto — keep its own transition
+   alive during the global theme crossfade, whose !important override
+   otherwise replaces it and makes the pill snap. */
+html.theme-transition .am-theme-pill {
+  transition: left 0.25s cubic-bezier(0.22, 1, 0.36, 1), width 0.25s cubic-bezier(0.22, 1, 0.36, 1) !important;
 }

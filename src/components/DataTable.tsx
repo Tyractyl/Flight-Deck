@@ -817,7 +817,7 @@ export function DataTable<T extends { id: string | number }>({
             {/* Connected card: top toolbar, body, bottom toolbar. The inner
                 scroll container lets wide rows scroll horizontally on phones
                 instead of stretching the whole page. */}
-            <div className="relative overflow-hidden rounded-xl border border-[color-mix(in_srgb,var(--fg)_5%,transparent)] bg-[var(--bg-card)] shadow-sm">
+            <div className="relative overflow-hidden rounded-2xl border-[1.5px] border-border bg-muted/80 shadow-sm">
                 <div className="overflow-x-auto">
                 <div className="min-w-[560px]">
                 {/* Top toolbar: labels + actions */}
@@ -856,7 +856,7 @@ export function DataTable<T extends { id: string | number }>({
                 {/* Body */}
                 <div
                     ref={tableBodyRef}
-                    className="relative z-10 -my-2 mx-0 overflow-hidden rounded-lg bg-[var(--bg-elevated)] px-1"
+                    className="relative z-10 -my-2 mx-0 overflow-hidden rounded-xl bg-background px-1"
                 >
                     <div ref={innerRef} className="flex flex-col gap-1 py-1">
                         {loading ? (

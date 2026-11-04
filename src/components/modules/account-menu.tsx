@@ -99,13 +99,14 @@ export function AccountMenu({
       const row = target.closest(".am-row") as HTMLElement | null;
       if (!row) return;
       if (!honRef.current) hl.style.transition = "none";
-      hl.style.top = `${row.offsetTop}px`;
-      hl.style.left = `${row.offsetLeft}px`;
-      hl.style.width = `${row.offsetWidth}px`;
-      hl.style.height = `${row.offsetHeight}px`;
-      hl.style.borderRadius = "8.5px";
-      hl.classList.toggle("am-hl-danger", row.hasAttribute("data-d"));
-      hl.classList.toggle("am-hl-dark", !!row.closest(".am-bottom") && !row.hasAttribute("data-d"));
+      // Inset the highlight so it reads as a pill inside the row instead of a
+      // full-bleed stripe, and keep one neutral color for every row — theme,
+      // logout included — instead of switching to black/red per section.
+      hl.style.top = `${row.offsetTop + 2}px`;
+      hl.style.left = `${row.offsetLeft + 6}px`;
+      hl.style.width = `${row.offsetWidth - 12}px`;
+      hl.style.height = `${row.offsetHeight - 4}px`;
+      hl.style.borderRadius = "7px";
       if (!honRef.current) {
         void hl.offsetWidth;
         hl.style.transition = "";
