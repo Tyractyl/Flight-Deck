@@ -53,6 +53,24 @@ function CreateServerModal({ open, onClose }: { open: boolean; onClose: () => vo
      is open so a single Escape press closes the popover and not the whole
      dialog. */
   const [dialOpen, setDialOpen] = useState<'memory' | 'disk' | 'cpu' | null>(null)
+  /* The form stays mounted through the dialog's exit animation — unmounting
+     it at close start fades out an empty shell, which reads as a flash. The
+     session key gives every open a fresh form. */
+  const [renderForm, setRenderForm] = useState(open)
+  const [formSession, setFormSession] = useState(0)
+
+  useEffect(() => {
+    if (open) {
+      setRenderForm(true)
+      setFormSession((s) => s + 1)
+      return
+    }
+    // Closing: drop any open dial popover immediately (it fades with its own
+    // exit), keep the form for the dialog's exit, then unmount.
+    setDialOpen(null)
+    const timer = setTimeout(() => setRenderForm(false), 230)
+    return () => clearTimeout(timer)
+  }, [open])
 
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
@@ -74,8 +92,9 @@ function CreateServerModal({ open, onClose }: { open: boolean; onClose: () => vo
             <span className="sr-only">Close</span>
           </DialogClose>
         </DialogHeader>
-        {open && (
+        {renderForm && (
           <CreateServerForm
+            key={formSession}
             onClose={onClose}
             dialOpen={dialOpen}
             onDialOpenChange={setDialOpen}
