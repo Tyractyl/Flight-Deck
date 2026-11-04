@@ -153,26 +153,26 @@ function GaugeNotchSvg({
               notchCornerRadius,
               cornerDepth
             );
-            // One path per notch with a fill transition: lighting up and
-            // dimming animate identically while scrubbing.
+            // Track path + a permanently-mounted active overlay whose
+            // fill-opacity crossfades: lighting up and dimming animate
+            // identically and opacity always interpolates (fill colors may
+            // not). Snappy on purpose — it tracks the pointer.
             return (
-              <path
-                d={pathD}
-                fill={
-                  notch.isActive
-                    ? resolveActiveFill(notch)
-                    : resolveBgFill(notch.index)
-                }
-                fillOpacity={
-                  notch.isActive
-                    ? resolvedActiveFillOpacity
-                    : resolvedInactiveFillOpacity
-                }
-                key={`scrub-${notch.index}`}
-                style={{
-                  transition: 'fill 0.15s ease, fill-opacity 0.15s ease',
-                }}
-              />
+              <g key={`scrub-${notch.index}`}>
+                <path
+                  d={pathD}
+                  fill={resolveBgFill(notch.index)}
+                  fillOpacity={resolvedInactiveFillOpacity}
+                />
+                <path
+                  d={pathD}
+                  fill={resolveActiveFill(notch)}
+                  fillOpacity={
+                    notch.isActive ? resolvedActiveFillOpacity : 0
+                  }
+                  style={{ transition: 'fill-opacity 0.1s ease' }}
+                />
+              </g>
             );
           })
         : null}

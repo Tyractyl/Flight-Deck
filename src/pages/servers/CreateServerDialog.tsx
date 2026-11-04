@@ -455,22 +455,20 @@ function DialField({
             aria-invalid={invalid}
             className="pr-9"
           />
-          {max > 0 && (
-            <PopoverTrigger asChild>
-              <button
-                type="button"
-                aria-label={`Pick ${label.toLowerCase()} with the dial`}
-                title="Pick with the dial"
-                className={`absolute right-1.5 top-1/2 -translate-y-1/2 rounded-md p-1 transition-all duration-150 hover:bg-[var(--fg)]/5 hover:text-[var(--fg)] ${
-                  open
-                    ? 'text-[var(--fg)] opacity-100'
-                    : 'text-[var(--fg-muted)] opacity-80 group-hover:opacity-100 group-focus-within:opacity-100'
-                }`}
-              >
-                <HugeiconsIcon icon={GaugeIcon} size={13} />
-              </button>
-            </PopoverTrigger>
-          )}
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              aria-label={`Pick ${label.toLowerCase()} with the dial`}
+              title="Pick with the dial"
+              className={`absolute right-1.5 top-1/2 -translate-y-1/2 rounded-md p-1 transition-all duration-150 hover:bg-[var(--fg)]/5 hover:text-[var(--fg)] ${
+                open
+                  ? 'text-[var(--fg)] opacity-100'
+                  : 'text-[var(--fg-faint)] opacity-0 group-hover:opacity-100 group-focus-within:opacity-100'
+              }`}
+            >
+              <HugeiconsIcon icon={GaugeIcon} size={13} />
+            </button>
+          </PopoverTrigger>
         </div>
         <PopoverContent align="end" sideOffset={6} className="w-[248px] gap-0 p-3">
           <div
