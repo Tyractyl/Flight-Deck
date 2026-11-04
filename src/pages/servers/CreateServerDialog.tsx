@@ -293,10 +293,10 @@ function CreateServerForm({
             invalid={cpuError !== ''}
             footerText={
               !selectedNode
-                ? 'Select a node to check availability'
+                ? 'Select a node to check availability · 100% = 1 core'
                 : cpuError !== ''
                   ? cpuError
-                  : `Available: ${availCpu}%`
+                  : `Available: ${availCpu}% · 100% = 1 core`
             }
             footerError={!!selectedNode && cpuError !== ''}
             open={dialOpen === 'cpu'}

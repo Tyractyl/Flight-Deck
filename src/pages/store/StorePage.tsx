@@ -54,7 +54,7 @@ const resourceConfig: Record<ResourceType, {
   },
   CPU: {
     label: 'CPU',
-    description: 'Processing power for your server',
+    description: 'Processing power for your server (100% = 1 core)',
     icon: CpuIcon,
     unit: '%',
     step: 10,
