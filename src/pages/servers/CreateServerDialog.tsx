@@ -56,7 +56,7 @@ function CreateServerModal({ open, onClose }: { open: boolean; onClose: () => vo
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
       <DialogContent
-        className="gap-0 overflow-hidden rounded-2xl border-[color-mix(in_srgb,var(--fg)_5%,transparent)] p-0 sm:max-w-2xl sm:rounded-2xl"
+        className="gap-0 overflow-hidden border-[color-mix(in_srgb,var(--fg)_5%,transparent)] p-0 sm:max-w-2xl"
         onEscapeKeyDown={(event) => {
           if (dialOpen) event.preventDefault()
         }}
@@ -462,8 +462,8 @@ function DialField({
                 title="Pick with the dial"
                 className={`absolute right-1.5 top-1/2 -translate-y-1/2 rounded-md p-1 transition-all duration-150 hover:bg-[var(--fg)]/5 hover:text-[var(--fg)] ${
                   open
-                    ? 'opacity-100 text-[var(--fg)]'
-                    : 'text-[var(--fg-faint)] opacity-0 group-hover:opacity-100 group-focus-within:opacity-100'
+                    ? 'text-[var(--fg)] opacity-100'
+                    : 'text-[var(--fg-faint)] opacity-50 group-hover:opacity-100 group-focus-within:opacity-100'
                 }`}
               >
                 <HugeiconsIcon icon={GaugeIcon} size={13} />
