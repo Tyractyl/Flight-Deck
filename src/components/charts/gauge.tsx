@@ -125,6 +125,7 @@ function GaugeNotchSvg({
     <svg
       aria-hidden="true"
       className="block w-full overflow-visible"
+      data-gauge-version="v3"
       height={height}
       viewBox={`0 0 ${width} ${height}`}
       width={width}
@@ -428,7 +429,7 @@ function GaugeArcInner(props: GaugeInnerProps) {
       <GaugeNotchSvg
         cornerDepth={notchLength}
         defsChildren={fillState.defsChildren}
-        geometryScrubbing={false}
+        geometryScrubbing={props.geometryScrubbing ?? false}
         height={height}
         notchCornerRadius={notchCornerRadius}
         notches={notches}
@@ -661,6 +662,7 @@ function GaugeInner(props: GaugeInnerProps) {
   return <GaugeArcInner {...props} />;
 }
 
+// DIAL-GAUGE-V3
 export function Gauge({
   width: widthProp,
   height: heightProp,
