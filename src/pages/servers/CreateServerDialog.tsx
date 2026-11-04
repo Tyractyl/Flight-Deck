@@ -5,6 +5,7 @@ import { X } from 'lucide-react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { GaugeIcon } from '@hugeicons/core-free-icons'
 import { Gauge } from '../../components/charts/gauge'
+import NumberFlow from '@number-flow/react'
 import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/popover'
 import { createServer } from '../../api/servers'
 import { listEggs } from '../../api/eggs'
@@ -346,6 +347,11 @@ function DialField({
   const rafRef = useRef<number | null>(null)
   const pointerRef = useRef<{ x: number; y: number } | null>(null)
   const lastValueRef = useRef(value)
+  /* Jog-drag state: the value follows the pointer's rotation relative to
+     where the drag started, so the fill moves with your hand around the ring
+     in the direction you pull — instead of teleporting to whichever notch the
+     absolute pointer angle lands on. */
+  const dialState = useRef<{ lastAngle: number; value: number } | null>(null)
 
   lastValueRef.current = value
 
@@ -372,24 +378,42 @@ function DialField({
     return () => document.removeEventListener('keydown', onKey, true)
   }, [open, onOpenChange])
 
+  const pointerAngle = (clientX: number, clientY: number): number | null => {
+    const el = dialRef.current
+    if (!el) return null
+    const rect = el.getBoundingClientRect()
+    const dx = clientX - (rect.left + rect.width / 2)
+    const dy = clientY - (rect.top + rect.height / 2)
+    // Near the hub the angle is noise — ignore so the dial doesn't spin.
+    if (Math.hypot(dx, dy) < rect.width * 0.12) return null
+    return (Math.atan2(dx, -dy) * 180) / Math.PI
+  }
+
   const applyPointer = () => {
     rafRef.current = null
     const ptr = pointerRef.current
-    const el = dialRef.current
-    if (!ptr || !el || max <= 0) return
-    const rect = el.getBoundingClientRect()
-    const dx = ptr.x - (rect.left + rect.width / 2)
-    const dy = ptr.y - (rect.top + rect.height / 2)
-    // Degrees clockwise from 12 o'clock; the dial sweeps 135°→405°.
-    const angle = (Math.atan2(dx, -dy) * 180) / Math.PI
-    const rel = ((angle - 135) + 360) % 360
-    const within = Math.min(Math.max(rel, 0), 270)
-    const raw = Math.round((within / 270) * max)
-    const clamped = Math.max(min, Math.min(max, raw))
-    const next = String(clamped)
-    if (next !== lastValueRef.current) {
-      lastValueRef.current = next
-      onValueChange(next)
+    if (!ptr || !draggingRef.current || max <= 0) return
+    const angle = pointerAngle(ptr.x, ptr.y)
+    if (angle === null) return
+    const state = dialState.current
+    if (!state) {
+      // First contact outside the hub: anchor here at the current value.
+      dialState.current = { lastAngle: angle, value: parseInt(lastValueRef.current) || min }
+      return
+    }
+    // Shortest signed rotation from the last sample, clamped so a fast
+    // flick (or a pass across the hub) can't teleport the value.
+    let delta = angle - state.lastAngle
+    if (delta > 180) delta -= 360
+    if (delta < -180) delta += 360
+    delta = Math.min(Math.max(delta, -40), 40)
+    state.lastAngle = angle
+    const next = Math.max(min, Math.min(max, Math.round(state.value + (delta / 270) * max)))
+    state.value = next
+    const nextStr = String(next)
+    if (nextStr !== lastValueRef.current) {
+      lastValueRef.current = nextStr
+      onValueChange(nextStr)
     }
   }
 
@@ -398,6 +422,10 @@ function DialField({
     if (rafRef.current == null) {
       rafRef.current = requestAnimationFrame(applyPointer)
     }
+  }
+
+  const resetDialState = () => {
+    dialState.current = null
   }
 
   const pct = max > 0 ? Math.min(100, Math.max(0, ((parseInt(value) || 0) / max) * 100)) : 0
@@ -424,8 +452,10 @@ function DialField({
                 type="button"
                 aria-label={`Pick ${label.toLowerCase()} with the dial`}
                 title="Pick with the dial"
-                className={`absolute right-1.5 top-1/2 -translate-y-1/2 rounded-md p-1 transition-colors duration-150 hover:bg-[var(--fg)]/5 ${
-                  open ? 'text-[var(--fg)]' : 'text-[var(--fg-faint)] hover:text-[var(--fg)]'
+                className={`absolute right-1.5 top-1/2 -translate-y-1/2 rounded-md p-1 transition-all duration-150 hover:bg-[var(--fg)]/5 hover:text-[var(--fg)] ${
+                  open
+                    ? 'opacity-100 text-[var(--fg)]'
+                    : 'text-[var(--fg-faint)] opacity-0 group-hover:opacity-100 group-focus-within:opacity-100'
                 }`}
               >
                 <HugeiconsIcon icon={GaugeIcon} size={13} />
@@ -436,29 +466,42 @@ function DialField({
         <PopoverContent align="end" sideOffset={6} className="w-[248px] gap-0 p-3">
           <div
             ref={dialRef}
-            className="mx-auto w-[216px] cursor-pointer select-none"
+            className="relative mx-auto w-[216px] cursor-grab select-none active:cursor-grabbing"
             style={{ touchAction: 'none' }}
             onPointerDown={(e) => {
               draggingRef.current = true
+              dialState.current = null
               e.currentTarget.setPointerCapture?.(e.pointerId)
               schedulePointer(e.clientX, e.clientY)
             }}
             onPointerMove={(e) => {
               if (draggingRef.current) schedulePointer(e.clientX, e.clientY)
             }}
-            onPointerUp={() => { draggingRef.current = false }}
-            onPointerCancel={() => { draggingRef.current = false }}
+            onPointerUp={() => { draggingRef.current = false; resetDialState() }}
+            onPointerCancel={() => { draggingRef.current = false; resetDialState() }}
           >
             <Gauge
               value={pct}
               totalNotches={28}
               spacing={30}
               geometryScrubbing
-              centerValue={parseInt(value) || 0}
-              suffix={` ${unit}`}
-              defaultLabel={`of ${max.toLocaleString()} max`}
               minWidth={216}
             />
+            {/* Center readout, fitted to the hub: the number shrinks as it
+                gets longer so long values stay inside the ring. */}
+            <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+              <NumberFlow
+                value={parseInt(value) || 0}
+                className="font-semibold tabular-nums text-[var(--fg)]"
+                style={{
+                  fontSize: Math.min(26, 128 / Math.max(3, (parseInt(value) || 0).toLocaleString().length)),
+                  lineHeight: 1.05,
+                }}
+              />
+              <span className="mt-0.5 text-[10px] text-[var(--fg-muted)]">
+                {unit === '%' ? `of ${max}% max` : `${unit} · of ${max.toLocaleString()} max`}
+              </span>
+            </div>
           </div>
           <div className="mt-2 flex justify-center gap-1.5">
             <button
