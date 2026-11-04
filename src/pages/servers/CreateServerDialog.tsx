@@ -507,15 +507,20 @@ function DialField({
             />
             {/* Center readout — the odometer tweens between values while
                 the dial drags; GB values are short so it fits the hub. */}
-            <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-              <div className="flex items-baseline gap-1">
-                <NumberFlow
-                  value={parseInt(value) || 0}
-                  className="font-semibold tabular-nums text-[var(--fg)]"
-                  style={{ fontSize: 28, lineHeight: 1 }}
-                />
-                <span className="text-xs font-medium text-[var(--fg-muted)]">{unit}</span>
-              </div>
+            {/* Number alone on its line, unit centered below — digit-width
+                changes (9 → 10) can't shove the unit sideways. */}
+            <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+              <NumberFlow
+                value={parseInt(value) || 0}
+                className="font-semibold tabular-nums text-[var(--fg)]"
+                style={{ fontSize: 26, lineHeight: 1 }}
+              />
+              <span
+                className="text-[11px] font-medium text-[var(--fg-muted)]"
+                style={{ marginTop: 3 }}
+              >
+                {unit}
+              </span>
             </div>
           </div>
           <div
