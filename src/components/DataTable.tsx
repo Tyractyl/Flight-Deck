@@ -814,8 +814,12 @@ export function DataTable<T extends { id: string | number }>({
 
     return (
         <>
-            {/* Connected card: top toolbar, body, bottom toolbar */}
+            {/* Connected card: top toolbar, body, bottom toolbar. The inner
+                scroll container lets wide rows scroll horizontally on phones
+                instead of stretching the whole page. */}
             <div className="relative overflow-hidden rounded-xl border border-[color-mix(in_srgb,var(--fg)_5%,transparent)] bg-[var(--bg-card)] shadow-sm">
+                <div className="overflow-x-auto">
+                <div className="min-w-[560px]">
                 {/* Top toolbar: labels + actions */}
                 <div className="flex flex-col gap-2 px-4 py-2 pb-4 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex min-w-0 flex-1 items-center">
@@ -909,6 +913,8 @@ export function DataTable<T extends { id: string | number }>({
                 ) : (
                     <DataTablePagination data={normalizedData} />
                 )}
+                </div>
+                </div>
                 </div>
             </div>
 

@@ -351,11 +351,6 @@ function DialField({
   const rafRef = useRef<number | null>(null)
   const pointerRef = useRef<{ x: number; y: number } | null>(null)
   const lastValueRef = useRef(value)
-  /* Jog-drag state: the value follows the pointer's rotation relative to
-     where the drag started, so the fill moves with your hand around the ring
-     in the direction you pull — instead of teleporting to whichever notch the
-     absolute pointer angle lands on. */
-  const dialState = useRef<{ lastAngle: number; value: number } | null>(null)
 
   lastValueRef.current = value
 
@@ -388,36 +383,32 @@ function DialField({
     const rect = el.getBoundingClientRect()
     const dx = clientX - (rect.left + rect.width / 2)
     const dy = clientY - (rect.top + rect.height / 2)
-    // Near the hub the angle is noise — ignore so the dial doesn't spin.
+    // Near the hub the angle is noise — hold the value instead of spinning.
     if (Math.hypot(dx, dy) < rect.width * 0.12) return null
     return (Math.atan2(dx, -dy) * 180) / Math.PI
   }
 
+  /* Arc-follow: the dial's minimum sits at 228° and sweeps 264° clockwise
+     to its maximum (measured off the rendered gauge — its 135°/405° props
+     land there on screen). The pointer's angle maps straight onto the arc,
+     so the fill follows the curve under the cursor; the bottom gap between
+     the ends holds the current value instead of jumping. */
   const applyPointer = () => {
     rafRef.current = null
     const ptr = pointerRef.current
-    if (!ptr || !draggingRef.current || max <= 0) return
+    if (!ptr || max <= 0) return
     const angle = pointerAngle(ptr.x, ptr.y)
     if (angle === null) return
-    const state = dialState.current
-    if (!state) {
-      // First contact outside the hub: anchor here at the current value.
-      dialState.current = { lastAngle: angle, value: parseInt(lastValueRef.current) || min }
-      return
-    }
-    // Shortest signed rotation from the last sample, clamped so a fast
-    // flick (or a pass across the hub) can't teleport the value.
-    let delta = angle - state.lastAngle
-    if (delta > 180) delta -= 360
-    if (delta < -180) delta += 360
-    delta = Math.min(Math.max(delta, -40), 40)
-    state.lastAngle = angle
-    const next = Math.max(min, Math.min(max, Math.round(state.value + (delta / 270) * max)))
-    state.value = next
-    const nextStr = String(next)
-    if (nextStr !== lastValueRef.current) {
-      lastValueRef.current = nextStr
-      onValueChange(nextStr)
+    const START_ANGLE = 228
+    const SWEEP = 264
+    const rel = ((angle - START_ANGLE) + 360) % 360
+    if (rel > SWEEP) return
+    const raw = Math.round((rel / SWEEP) * max)
+    const clamped = Math.max(min, Math.min(max, raw))
+    const next = String(clamped)
+    if (next !== lastValueRef.current) {
+      lastValueRef.current = next
+      onValueChange(next)
     }
   }
 
@@ -429,7 +420,19 @@ function DialField({
   }
 
   const resetDialState = () => {
-    dialState.current = null
+    draggingRef.current = false
+  }
+
+  /* Sliding highlight for the Max/Minimum shortcuts — the same frame-measured
+     glide the top navigation uses. */
+  const segRef = useRef<HTMLDivElement | null>(null)
+  const [segPill, setSegPill] = useState({ left: 0, width: 0, opacity: 0 })
+  const slideSeg = (el: HTMLElement) => {
+    const seg = segRef.current
+    if (!seg) return
+    const segRect = seg.getBoundingClientRect()
+    const rect = el.getBoundingClientRect()
+    setSegPill({ left: rect.left - segRect.left, width: rect.width, opacity: 1 })
   }
 
   const pct = max > 0 ? Math.min(100, Math.max(0, ((parseInt(value) || 0) / max) * 100)) : 0
@@ -446,6 +449,7 @@ function DialField({
             max={max > 0 ? max : undefined}
             value={value}
             onChange={(event) => onValueChange(event.target.value)}
+            onWheel={(event) => event.currentTarget.blur()}
             required
             aria-invalid={invalid}
             className="pr-9"
@@ -474,15 +478,14 @@ function DialField({
             style={{ touchAction: 'none' }}
             onPointerDown={(e) => {
               draggingRef.current = true
-              dialState.current = null
               e.currentTarget.setPointerCapture?.(e.pointerId)
               schedulePointer(e.clientX, e.clientY)
             }}
             onPointerMove={(e) => {
               if (draggingRef.current) schedulePointer(e.clientX, e.clientY)
             }}
-            onPointerUp={() => { draggingRef.current = false; resetDialState() }}
-            onPointerCancel={() => { draggingRef.current = false; resetDialState() }}
+            onPointerUp={resetDialState}
+            onPointerCancel={resetDialState}
           >
             <Gauge
               value={pct}
@@ -494,28 +497,46 @@ function DialField({
             {/* Center readout — a plain tabular number (no odometer
                 animation: it lagged behind fast drags) with the unit beside
                 it. GB values are short, so this always fits the hub. */}
-            <div className="pointer-events-none absolute inset-0 flex items-baseline justify-center">
-              <span
-                className="font-semibold tabular-nums text-[var(--fg)]"
-                style={{ fontSize: Math.min(30, 120 / Math.max(1, value.length)), lineHeight: 1 }}
-              >
-                {value}
-              </span>
-              <span className="text-xs font-medium text-[var(--fg-muted)]">{unit}</span>
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+              <div className="flex items-baseline gap-1">
+                <span
+                  className="font-semibold tabular-nums text-[var(--fg)]"
+                  style={{ fontSize: Math.min(30, 120 / Math.max(1, value.length)), lineHeight: 1 }}
+                >
+                  {value}
+                </span>
+                <span className="text-xs font-medium text-[var(--fg-muted)]">{unit}</span>
+              </div>
             </div>
           </div>
-          <div className="mt-2 flex justify-center gap-1.5">
+          <div
+            ref={segRef}
+            className="relative mt-2 flex justify-center gap-1"
+            onMouseLeave={() => setSegPill((p) => ({ ...p, opacity: 0 }))}
+          >
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute top-0 bottom-0 rounded-md bg-[var(--fg)]/10"
+              style={{
+                left: segPill.left,
+                width: segPill.width,
+                opacity: segPill.opacity,
+                transition: 'all 0.25s cubic-bezier(0.22, 1, 0.36, 1)',
+              }}
+            />
             <button
               type="button"
+              onMouseEnter={(e) => slideSeg(e.currentTarget)}
               onClick={() => onValueChange(String(max))}
-              className="rounded-md px-2 py-1 text-[11px] font-medium text-[var(--fg-muted)] transition-colors hover:bg-[var(--fg)]/5 hover:text-[var(--fg)]"
+              className="relative z-10 rounded-md px-2.5 py-1 text-[11px] font-medium text-[var(--fg-muted)] transition-colors hover:text-[var(--fg)]"
             >
               Max
             </button>
             <button
               type="button"
+              onMouseEnter={(e) => slideSeg(e.currentTarget)}
               onClick={() => onValueChange(String(min))}
-              className="rounded-md px-2 py-1 text-[11px] font-medium text-[var(--fg-muted)] transition-colors hover:bg-[var(--fg)]/5 hover:text-[var(--fg)]"
+              className="relative z-10 rounded-md px-2.5 py-1 text-[11px] font-medium text-[var(--fg-muted)] transition-colors hover:text-[var(--fg)]"
             >
               Minimum
             </button>

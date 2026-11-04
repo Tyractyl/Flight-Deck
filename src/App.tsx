@@ -83,8 +83,8 @@ function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <FrameLayout>
-      <div className="flex-1 min-h-0 overflow-auto overscroll-contain grid">
-        <div className="p-4 sm:p-6 flex flex-col">
+      <div className="flex-1 min-h-0 overflow-auto overscroll-contain grid grid-cols-[minmax(0,1fr)]">
+        <div className="p-4 sm:p-6 flex flex-col min-w-0">
           <PageTransition>{children}</PageTransition>
         </div>
       </div>

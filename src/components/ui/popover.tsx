@@ -17,7 +17,7 @@ const PopoverContent = React.forwardRef<
       align={align}
       sideOffset={sideOffset}
       className={cn(
-        "pointer-events-auto bg-[var(--bg-card)] text-[var(--fg)] z-[9999] w-[var(--radix-popover-trigger-width)] rounded-lg border border-[var(--border)] p-1 shadow-lg outline-none data-[state=open]:[animation:dropdownIn_0.2s_cubic-bezier(0.16,1,0.3,1)_forwards] data-[state=closed]:[animation:dropdownOut_0.15s_ease-in_forwards]",
+        "pointer-events-auto bg-[var(--bg-card)] text-[var(--fg)] z-[9999] w-[var(--radix-popover-trigger-width)] rounded-xl border border-[var(--border-strong)] p-1 shadow-2xl backdrop-blur-md outline-none data-[state=open]:[animation:dropdownIn_0.2s_cubic-bezier(0.16,1,0.3,1)_forwards] data-[state=closed]:[animation:dropdownOut_0.15s_ease-in_forwards]",
         className,
       )}
       {...props}
