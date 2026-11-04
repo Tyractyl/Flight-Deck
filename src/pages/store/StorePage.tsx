@@ -2,8 +2,6 @@ import { useState, useRef, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getStoreRates, customPurchase } from '../../api/eggs'
 import { getBalance } from '../../api/coins'
-import { Input } from '../../components/ui/Input'
-import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card'
 import { DialogShell, useDialog } from '../../components/modules/dialog-shell'
 import { listServers } from '../../api/servers'
 
@@ -17,7 +15,11 @@ import {
   CircleDollarSignIcon,
   CheckIcon,
   ArrowDown01Icon,
+  GaugeIcon,
 } from '@hugeicons/core-free-icons'
+import NumberFlow from '@number-flow/react'
+import { Gauge } from '../../components/charts/gauge'
+import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/popover'
 import Button from '../../components/Button'
 
 type ResourceType = 'MEMORY' | 'DISK' | 'CPU'
@@ -66,7 +68,8 @@ const resourceConfig: Record<ResourceType, {
 
 /*
  * Server picker — a small animated dropdown in the same spirit as the account
- * menu: blur/scale-in on open, a sliding highlight, outside-click + Escape.
+ * menu and the global dropdown: scale-in on open, outside-click + Escape,
+ * global panel tokens.
  */
 function ServerDropdown({
   servers,
@@ -112,7 +115,7 @@ function ServerDropdown({
         />
       </button>
       <div
-        className="absolute z-50 mt-1.5 w-full rounded-xl overflow-hidden bg-[var(--bg-elevated)] border border-[var(--border)] shadow-2xl origin-top"
+        className="absolute z-50 mt-1.5 w-full rounded-xl overflow-hidden bg-[var(--bg-card)] border border-[var(--border-strong)] shadow-2xl backdrop-blur-md origin-top"
         style={{
           display: open ? 'block' : 'none',
           animation: open ? 'dropdownIn 0.18s cubic-bezier(0.22, 1, 0.36, 1) forwards' : undefined,
@@ -188,6 +191,13 @@ function PurchaseConfirm({
   )
 }
 
+/*
+ * ResourceCard — one store tile, in the app's card language. The amount is
+ * set with the same notch-gauge dial the create-server dialog uses (the icon
+ * on the input opens a floating gauge whose ring fills at the pointer's
+ * exact angle), plus quick preset chips with the topbar's sliding hover
+ * highlight.
+ */
 function ResourceCard({
   type,
   rate,
@@ -208,6 +218,11 @@ function ResourceCard({
   const [amount, setAmount] = useState(cfg.defaultGb)
   const [serverId, setServerId] = useState('')
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const [dialOpen, setDialOpen] = useState(false)
+  const [livePct, setLivePct] = useState<number | null>(null)
+
+  const dialRef = useRef<HTMLDivElement | null>(null)
+  const draggingRef = useRef(false)
 
   const isGb = cfg.unit === 'GB'
   const amountInMb = isGb ? amount * 1024 : amount
@@ -234,102 +249,208 @@ function ResourceCard({
 
   const serverName = servers.find((s) => s.id === serverId)?.name || ''
 
+  // Escape closes the dial (the popover's own close also fires here).
+  useEffect(() => {
+    if (!dialOpen) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setDialOpen(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [dialOpen])
+
+  const applyAmount = (v: number) => {
+    const clamped = Math.max(cfg.min, Math.min(cfg.max, v))
+    setAmount(clamped)
+    return clamped
+  }
+
+  // The dial's minimum sits at 228° and sweeps 264° clockwise (measured off
+  // the rendered gauge). The pointer's angle maps straight onto the arc; the
+  // bottom gap between the ends holds the value instead of jumping.
+  const applyPointer = (clientX: number, clientY: number) => {
+    const el = dialRef.current
+    if (!el) return
+    const rect = el.getBoundingClientRect()
+    const dx = clientX - (rect.left + rect.width / 2)
+    const dy = clientY - (rect.top + rect.height / 2)
+    // Near the hub the angle is noise — hold the value instead of spinning.
+    if (Math.hypot(dx, dy) < rect.width * 0.12) return
+    const angle = (Math.atan2(dx, -dy) * 180) / Math.PI
+    const rel = ((angle - 228) + 360) % 360
+    if (rel > 264) return
+    setLivePct(Math.round((rel / 264) * 10000) / 100)
+    applyAmount(Math.round((rel / 264) * cfg.max))
+  }
+
+  const resetDialState = () => {
+    draggingRef.current = false
+    setLivePct(null)
+  }
+
+  // Sliding hover pill across the preset chips — the topbar's glide.
+  const segRef = useRef<HTMLDivElement | null>(null)
+  const [segPill, setSegPill] = useState({ left: 0, width: 0, opacity: 0 })
+  const slideSeg = (el: HTMLElement) => {
+    const seg = segRef.current
+    if (!seg) return
+    const segRect = seg.getBoundingClientRect()
+    const rect = el.getBoundingClientRect()
+    setSegPill({ left: rect.left - segRect.left, width: rect.width, opacity: 1 })
+  }
+
+  const pct = Math.min(100, Math.max(0, (amount / cfg.max) * 100))
+
   return (
     <div style={{ animation: `fade-up 0.4s cubic-bezier(0.22, 1, 0.36, 1) ${index * 70}ms both` }}>
-      <Card className="h-full">
-        <CardHeader>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-[var(--bg-elevated)] flex items-center justify-center">
-              <HugeiconsIcon icon={cfg.icon} className="w-5 h-5 text-[var(--fg-muted)]" />
-            </div>
-            <div className="flex-1">
-              <CardTitle className="text-sm">{cfg.label}</CardTitle>
-              <p className="text-xs text-[var(--fg-muted)] mt-1">{cfg.description}</p>
-            </div>
-          </div>
-        </CardHeader>
+      {/* Tile — Heliactyl-style: a quiet card inside the grouped container,
+          title top-left, controls below, price pinned to the bottom. */}
+      <div className="flex h-full flex-col rounded-lg border border-[var(--border)] bg-[var(--bg-card)] p-3">
+        <div className="text-sm font-semibold text-[var(--fg)] mb-1">{cfg.label}</div>
+        <p className="text-[11px] text-[var(--fg-muted)] mb-3">
+          {rate.toFixed(2)} coins per {isGb ? 'MB' : cfg.unit}
+        </p>
 
-        <CardContent className="flex flex-1 flex-col">
-          <p className="text-[11px] text-[var(--fg-muted)] mb-3">
-            {rate.toFixed(2)} coins per {isGb ? 'MB' : cfg.unit}
-          </p>
-
-          {/* Amount */}
-          <div className="flex items-center gap-2 mb-3">
-            <button
-              type="button"
-              onClick={() => setAmount(Math.max(cfg.min, amount - cfg.step))}
-              className="w-8 h-8 rounded-md flex items-center justify-center bg-[var(--bg-elevated)] text-[var(--fg-muted)] hover:text-[var(--fg)] transition-colors text-lg"
-            >
-              −
-            </button>
-            <div className="flex-1 relative">
-              <Input
+        <div className="flex flex-col gap-2.5 flex-1">
+          {/* Amount input + dial trigger */}
+          <Popover open={dialOpen} onOpenChange={setDialOpen}>
+            <div className="group relative">
+              <input
                 type="number"
                 value={amount}
+                min={cfg.min}
+                max={cfg.max}
                 onChange={(e) => {
                   const v = Number(e.target.value)
                   if (v >= cfg.min && v <= cfg.max) setAmount(v)
                 }}
-                className="text-center"
+                onWheel={(e) => e.currentTarget.blur()}
+                className="w-full h-8 rounded-lg bg-[var(--bg-input)] border border-[var(--border-strong)] px-3 pr-8 text-center text-sm text-[var(--fg)] outline-none focus:border-[var(--fg-muted)]/40"
+                aria-label={`${cfg.label} amount`}
               />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[var(--fg-muted)] pointer-events-none">
-                {cfg.unit}
-              </span>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  aria-label={`Pick ${cfg.label.toLowerCase()} with the dial`}
+                  title="Pick with the dial"
+                  className={`absolute right-1 top-1/2 -translate-y-1/2 rounded p-1 transition-all duration-150 hover:bg-[var(--fg)]/5 hover:text-[var(--fg)] ${
+                    dialOpen
+                      ? 'text-[var(--fg)] opacity-100'
+                      : 'text-[var(--fg-muted)] opacity-80 group-hover:opacity-100'
+                  }`}
+                >
+                  <HugeiconsIcon icon={GaugeIcon} size={12} />
+                </button>
+              </PopoverTrigger>
             </div>
-            <button
-              type="button"
-              onClick={() => setAmount(Math.min(cfg.max, amount + cfg.step))}
-              className="w-8 h-8 rounded-md flex items-center justify-center bg-[var(--bg-elevated)] text-[var(--fg-muted)] hover:text-[var(--fg)] transition-colors text-lg"
-            >
-              +
-            </button>
-          </div>
+            <PopoverContent align="end" sideOffset={6} className="w-[248px] gap-0 p-3">
+              <div
+                ref={dialRef}
+                className="relative mx-auto w-[216px] cursor-grab select-none active:cursor-grabbing"
+                style={{ touchAction: 'none' }}
+                onPointerDown={(e) => {
+                  draggingRef.current = true
+                  e.currentTarget.setPointerCapture?.(e.pointerId)
+                  applyPointer(e.clientX, e.clientY)
+                }}
+                onPointerMove={(e) => {
+                  if (draggingRef.current) applyPointer(e.clientX, e.clientY)
+                }}
+                onPointerUp={resetDialState}
+                onPointerCancel={resetDialState}
+              >
+                <Gauge
+                  value={livePct ?? pct}
+                  totalNotches={28}
+                  spacing={30}
+                  geometryScrubbing
+                  minWidth={216}
+                />
+                {/* Number alone on its line, unit centered below — digit-width
+                    changes can't shove the unit sideways. */}
+                <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+                  <NumberFlow
+                    value={amount}
+                    className="font-semibold tabular-nums text-[var(--fg)]"
+                    style={{ fontSize: 26, lineHeight: 1 }}
+                  />
+                  <span className="text-[11px] font-medium text-[var(--fg-muted)]" style={{ marginTop: 3 }}>
+                    {cfg.unit}
+                  </span>
+                </div>
+              </div>
+              <div className="mt-2 flex justify-center">
+                <button
+                  type="button"
+                  onClick={() => applyAmount(cfg.max)}
+                  className="rounded-md px-2.5 py-1 text-[11px] font-medium text-[var(--fg-muted)] transition-colors hover:bg-[var(--fg)]/5 hover:text-[var(--fg)]"
+                >
+                  Max ({cfg.max} {cfg.unit})
+                </button>
+              </div>
+            </PopoverContent>
+          </Popover>
 
-          {/* Presets */}
-          <div className="flex items-center gap-1 mb-4 flex-wrap">
+          {/* Presets with the sliding hover pill */}
+          <div
+            ref={segRef}
+            className="relative flex items-center gap-0.5"
+            onMouseLeave={() => setSegPill((p) => ({ ...p, opacity: 0 }))}
+          >
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute top-0 bottom-0 rounded-md bg-[var(--fg)]/10"
+              style={{
+                left: segPill.left,
+                width: segPill.width,
+                opacity: segPill.opacity,
+                transition: 'all 0.25s cubic-bezier(0.22, 1, 0.36, 1)',
+              }}
+            />
             {presets.map((preset) => (
               <button
                 key={preset}
                 type="button"
+                onMouseEnter={(e) => slideSeg(e.currentTarget)}
                 onClick={() => setAmount(preset)}
-                className={`px-2.5 py-1 rounded-md text-xs transition-colors ${
+                className={`relative z-10 flex-1 px-1 py-1 rounded-md text-xs transition-colors ${
                   amount === preset
-                    ? 'bg-[var(--bg-elevated)] text-[var(--fg)]'
+                    ? 'text-[var(--fg)]'
                     : 'text-[var(--fg-muted)] hover:text-[var(--fg)]'
                 }`}
               >
-                {preset}{cfg.unit === '%' ? '%' : ''}
+                {preset}
               </button>
             ))}
           </div>
 
-          {/* Server */}
-          <div className="mb-4">
-            <label className="block text-xs font-medium text-[var(--fg-muted)] mb-1.5">Apply to server</label>
-            <ServerDropdown servers={servers} value={serverId} onChange={setServerId} />
-          </div>
+          {/* Target server */}
+          <ServerDropdown
+            servers={servers}
+            value={serverId}
+            onChange={setServerId}
+          />
+        </div>
 
-          {/* Price + purchase */}
-          <div className="mt-auto pt-3 border-t border-[var(--border)] flex items-center justify-between">
-            <div className="flex items-center gap-1.5">
-              <span className={`text-lg font-medium ${canAfford ? 'text-[var(--fg)]' : 'text-red-400'}`}>
-                {totalPrice.toLocaleString()}
-              </span>
-              <HugeiconsIcon icon={CircleDollarSignIcon} className="w-4 h-4 text-[var(--fg-muted)]" />
-            </div>
-            <Button
-              variant="default"
-              size="sm"
-              onClick={() => setConfirmOpen(true)}
-              disabled={!canAfford || !serverId || purchaseMutation.isPending}
-              loading={purchaseMutation.isPending}
-            >
-              {!canAfford ? 'No coins' : !serverId ? 'Select server' : 'Purchase'}
-            </Button>
+        {/* Price + purchase */}
+        <div className="mt-auto pt-3 flex items-center justify-between">
+          <div className="flex items-center gap-1.5">
+            <span className={`text-sm font-medium ${canAfford ? 'text-[var(--fg)]' : 'text-red-400'}`}>
+              {totalPrice.toLocaleString()}
+            </span>
+            <HugeiconsIcon icon={CircleDollarSignIcon} className="w-3.5 h-3.5 text-[var(--fg-muted)]" />
           </div>
-        </CardContent>
-      </Card>
+          <Button
+            variant="default"
+            size="sm"
+            onClick={() => setConfirmOpen(true)}
+            disabled={!canAfford || !serverId || purchaseMutation.isPending}
+            loading={purchaseMutation.isPending}
+          >
+            {!canAfford ? 'No coins' : !serverId ? 'Select server' : 'Purchase'}
+          </Button>
+        </div>
+      </div>
 
       {confirmOpen && (
         <DialogShell width={400} labelledBy="store-confirm-title" onClose={() => setConfirmOpen(false)}>
@@ -370,7 +491,7 @@ export default function StorePage() {
   const ratesMap = rates ?? { MEMORY: 0.1, DISK: 0.015, CPU: 3.0 }
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -383,22 +504,29 @@ export default function StorePage() {
         </div>
       </div>
 
-      {/* Resource cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-stretch">
-        {(['MEMORY', 'DISK', 'CPU'] as ResourceType[]).map((type, i) => (
-          <ResourceCard
-            key={type}
-            type={type}
-            index={i}
-            rate={ratesMap[type] ?? 0}
-            balance={balance}
-            servers={serverList}
-            onPurchased={() => {
-              queryClient.invalidateQueries({ queryKey: queryKeys.coins.balance })
-              queryClient.invalidateQueries({ queryKey: queryKeys.servers.all })
-            }}
-          />
-        ))}
+      {/* Grouped resources container — Heliactyl dashboard style: a quiet
+          muted panel holding the tiles. */}
+      <div className="rounded-lg bg-[var(--bg-elevated)]/60">
+        <div className="px-3 pt-3 pb-1 flex items-center gap-2">
+          <HugeiconsIcon icon={CircleDollarSignIcon} className="h-4 w-4 text-[var(--fg-muted)]/30" />
+          <span className="text-xs text-[var(--fg)] font-semibold">Resources</span>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 p-1 gap-1 items-stretch">
+          {(['MEMORY', 'DISK', 'CPU'] as ResourceType[]).map((type, i) => (
+            <ResourceCard
+              key={type}
+              type={type}
+              index={i}
+              rate={ratesMap[type] ?? 0}
+              balance={balance}
+              servers={serverList}
+              onPurchased={() => {
+                queryClient.invalidateQueries({ queryKey: queryKeys.coins.balance })
+                queryClient.invalidateQueries({ queryKey: queryKeys.servers.all })
+              }}
+            />
+          ))}
+        </div>
       </div>
     </div>
   )
