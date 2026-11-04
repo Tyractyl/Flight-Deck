@@ -354,8 +354,6 @@ function DialField({
 }) {
   const dialRef = useRef<HTMLDivElement | null>(null)
   const draggingRef = useRef(false)
-  const rafRef = useRef<number | null>(null)
-  const pointerRef = useRef<{ x: number; y: number } | null>(null)
   const lastValueRef = useRef(value)
   /* While dragging, the ring fills at the pointer's exact angle instead of
      jumping between whole-GB notches; it snaps back to the committed value
@@ -363,13 +361,6 @@ function DialField({
   const [livePct, setLivePct] = useState<number | null>(null)
 
   lastValueRef.current = value
-
-  // Drop the pending animation frame when the field unmounts.
-  useEffect(() => {
-    return () => {
-      if (rafRef.current != null) cancelAnimationFrame(rafRef.current)
-    }
-  }, [])
 
   // Escape closes this dial and nothing else. Handled with a capture-phase
   // document listener while the popover is open: the event is consumed before
@@ -403,11 +394,9 @@ function DialField({
      land there on screen). The pointer's angle maps straight onto the arc,
      so the fill follows the curve under the cursor; the bottom gap between
      the ends holds the current value instead of jumping. */
-  const applyPointer = () => {
-    rafRef.current = null
-    const ptr = pointerRef.current
-    if (!ptr || max <= 0) return
-    const angle = pointerAngle(ptr.x, ptr.y)
+  const applyPointer = (clientX: number, clientY: number) => {
+    if (max <= 0) return
+    const angle = pointerAngle(clientX, clientY)
     if (angle === null) return
     const START_ANGLE = 228
     const SWEEP = 264
@@ -422,13 +411,6 @@ function DialField({
     if (next !== lastValueRef.current) {
       lastValueRef.current = next
       onValueChange(next)
-    }
-  }
-
-  const schedulePointer = (clientX: number, clientY: number) => {
-    pointerRef.current = { x: clientX, y: clientY }
-    if (rafRef.current == null) {
-      rafRef.current = requestAnimationFrame(applyPointer)
     }
   }
 
@@ -498,10 +480,10 @@ function DialField({
             onPointerDown={(e) => {
               draggingRef.current = true
               e.currentTarget.setPointerCapture?.(e.pointerId)
-              schedulePointer(e.clientX, e.clientY)
+              applyPointer(e.clientX, e.clientY)
             }}
             onPointerMove={(e) => {
-              if (draggingRef.current) schedulePointer(e.clientX, e.clientY)
+              if (draggingRef.current) applyPointer(e.clientX, e.clientY)
             }}
             onPointerUp={() => { draggingRef.current = false; resetDialState(); setLivePct(null) }}
             onPointerCancel={() => { draggingRef.current = false; resetDialState(); setLivePct(null) }}
