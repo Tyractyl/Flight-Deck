@@ -98,9 +98,21 @@ export function useSlidingCaret<T extends HTMLElement>() {
       caret.style.animation = 'sliding-caret-blink 1.06s linear 0.4s infinite';
     };
 
+    let placedOnce = false;
+
     const show = () => {
       caret.style.opacity = '1';
-      place();
+      if (!placedOnce) {
+        // First reveal: position without the transform transition, so the
+        // caret doesn't glide in from the wrapper's left edge.
+        placedOnce = true;
+        caret.style.transition = 'none';
+        place();
+        void caret.offsetWidth;
+        caret.style.transition = '';
+      } else {
+        place();
+      }
       restartBlink();
     };
     const hide = () => {

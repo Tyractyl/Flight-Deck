@@ -56,7 +56,7 @@ function CreateServerModal({ open, onClose }: { open: boolean; onClose: () => vo
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
       <DialogContent
-        className="gap-0 overflow-hidden border-[color-mix(in_srgb,var(--fg)_5%,transparent)] p-0 sm:max-w-2xl"
+        className="gap-0 overflow-hidden rounded-2xl border-[color-mix(in_srgb,var(--fg)_5%,transparent)] p-0 sm:max-w-2xl sm:rounded-2xl"
         onEscapeKeyDown={(event) => {
           if (dialOpen) event.preventDefault()
         }}

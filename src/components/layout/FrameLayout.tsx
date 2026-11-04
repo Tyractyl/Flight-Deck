@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
 import { useThemeStore } from '../../store/themeStore';
@@ -8,6 +8,12 @@ import { CircleDollarSignIcon, UserIcon } from '@hugeicons/core-free-icons';
 import { sileo } from 'sileo';
 import api from '../../api/client';
 import { AccountMenu } from '../modules/account-menu';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '../ui/dropdown-menu';
 
 export function FrameLayout({ children }: { children?: React.ReactNode }) {
   const location = useLocation();
@@ -15,21 +21,9 @@ export function FrameLayout({ children }: { children?: React.ReactNode }) {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const { theme, setTheme } = useThemeStore();
-  const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const mobileNavRef = useRef<HTMLDivElement>(null);
   const navRef = useRef<HTMLElement>(null);
   const [navHover, setNavHover] = useState({ left: 0, width: 0, opacity: 0 });
   const admin = useAdminSidebar();
-
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (mobileNavRef.current && !mobileNavRef.current.contains(e.target as Node)) {
-        setMobileNavOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
 
   const snapToActive = () => {
     const activeLink = navLinks.find(link => isActive(link.to));
@@ -156,41 +150,34 @@ export function FrameLayout({ children }: { children?: React.ReactNode }) {
 
           {/* Right side */}
           <div className="flex items-center gap-4 shrink-0">
-            <div ref={mobileNavRef} className="sm:hidden relative">
-              <button
-                onClick={() => setMobileNavOpen(!mobileNavOpen)}
-                className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[var(--bg-elevated)] transition-colors"
-                aria-expanded={mobileNavOpen}
-                aria-label="Toggle navigation"
-              >
-                <svg width="18" height="14" viewBox="0 0 18 14" fill="none" className="text-[var(--fg)]">
-                  <path d="M1 1H17M1 7H17M1 13H17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                </svg>
-              </button>
-              {mobileNavOpen && (
-                <div
-                  className="absolute right-0 top-full mt-2 bg-[var(--bg-card)] rounded-2xl border border-[var(--border)] py-2 min-w-[160px] z-50 shadow-2xl"
-                  style={{
-                    animation: 'dropdownIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards',
-                    transformOrigin: 'top right',
-                  }}
-                >
+            <div className="sm:hidden">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[var(--bg-elevated)] transition-colors"
+                    aria-label="Toggle navigation"
+                  >
+                    <svg width="18" height="14" viewBox="0 0 18 14" fill="none" className="text-[var(--fg)]">
+                      <path d="M1 1H17M1 7H17M1 13H17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                    </svg>
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="min-w-[160px] p-1.5">
                   {navLinks.map((link) => (
-                    <Link
+                    <DropdownMenuItem
                       key={link.to}
-                      to={link.to}
-                      onClick={() => setMobileNavOpen(false)}
-                      className={`block px-4 py-2.5 text-sm transition-all duration-200 ${
+                      render={<Link to={link.to} />}
+                      className={`block cursor-pointer rounded-lg px-4 py-2.5 text-sm data-[highlighted]:bg-[var(--fg)]/5 ${
                         isActive(link.to)
                           ? 'text-[var(--fg)] bg-[var(--fg)]/5'
-                          : 'text-[var(--fg-muted)] hover:text-[var(--fg)] hover:bg-[var(--fg)]/5'
+                          : 'text-[var(--fg-muted)] data-[highlighted]:text-[var(--fg)]'
                       }`}
                     >
                       {link.label}
-                    </Link>
+                    </DropdownMenuItem>
                   ))}
-                </div>
-              )}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
 
             <div className="rounded-lg bg-linear-[180deg,#272727_0%,#232323_0.01%,#000_100%] flex items-center gap-2 pl-3 pr-[5px] h-9">
