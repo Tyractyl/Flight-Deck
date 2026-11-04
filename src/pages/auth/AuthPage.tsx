@@ -291,7 +291,10 @@ export default function AuthPage() {
                 <div style={{ color: '#fff', fontSize: 16, fontFamily: 'var(--font-sans, ui-sans-serif, system-ui, sans-serif)', fontWeight: 400, marginBottom: 4 }}>Welcome to Tyractyl™</div>
                 <div style={{ color: '#4B4B4B', fontSize: 10, fontFamily: 'var(--font-sans, ui-sans-serif, system-ui, sans-serif)', fontWeight: 400, marginBottom: 25 }}>Hosting that doesn't feel ancient</div>
                 <form noValidate onSubmit={handleAuthSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 15, position: 'relative' }}>
-                  {/* Discord Button */}
+                  {/* Discord Button — only rendered when the server reports
+                      Discord sign-in as configured */}
+                  {discordEnabled && (
+                  <>
                   <Button
                     variant="discord"
                     width={178}
@@ -329,6 +332,8 @@ export default function AuthPage() {
                     <div style={{ color: '#636363', fontSize: 7, fontFamily: 'var(--font-sans, ui-sans-serif, system-ui, sans-serif)' }}>Or</div>
                     <div style={{ flex: 1, height: 1, background: '#212121', borderRadius: 5 }} />
                   </div>
+                  </>
+                  )}
                   {/* Email Input */}
                   <div className="auth-input-wrapper" ref={loginEmailCaret} style={{ position: 'relative', width: 178, height: 22, background: 'linear-gradient(180deg, #272727 0%, #232323 0.01%, #0a0a0a 100%)', borderRadius: 5 }}>
                     <div style={{ position: 'absolute', top: -2, left: 15, width: 22, height: 8, background: '#000', borderBottomRightRadius: 3, borderBottomLeftRadius: 3 }} />
