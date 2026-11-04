@@ -1,10 +1,11 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import type { FormEvent, ReactNode } from 'react'
+import type { FormEvent } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { X } from 'lucide-react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { GaugeIcon } from '@hugeicons/core-free-icons'
 import { Gauge } from '../../components/charts/gauge'
+import NumberFlow from '@number-flow/react'
 import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/popover'
 import { createServer } from '../../api/servers'
 import { listEggs } from '../../api/eggs'
@@ -245,17 +246,17 @@ function CreateServerForm({
             onValueChange={(v) => setDataField('memoryGb', v)}
             min={MIN_MEMORY_GB}
             max={availMemGb}
+            fallbackMax={32}
             unit="GB"
             invalid={memError !== ''}
-            footer={
-              memError !== '' ? (
-                <p className="text-xs text-[var(--destructive)]">{memError}</p>
-              ) : (
-                <p className="text-xs text-muted-foreground">
-                  {availMemGb > 0 ? `Available: ${availMemGb} GB` : `Minimum ${MIN_MEMORY_GB} GB`}
-                </p>
-              )
+            footerText={
+              !selectedNode
+                ? 'Select a node to check availability'
+                : memError !== ''
+                  ? memError
+                  : `Available: ${availMemGb} GB`
             }
+            footerError={!!selectedNode && memError !== ''}
             open={dialOpen === 'memory'}
             onOpenChange={(o) => onDialOpenChange(o ? 'memory' : null)}
           />
@@ -266,17 +267,17 @@ function CreateServerForm({
             onValueChange={(v) => setDataField('diskGb', v)}
             min={MIN_DISK_GB}
             max={availDiskGb}
+            fallbackMax={100}
             unit="GB"
             invalid={diskError !== ''}
-            footer={
-              diskError !== '' ? (
-                <p className="text-xs text-[var(--destructive)]">{diskError}</p>
-              ) : (
-                <p className="text-xs text-muted-foreground">
-                  {availDiskGb > 0 ? `Available: ${availDiskGb} GB` : `Minimum ${MIN_DISK_GB} GB`}
-                </p>
-              )
+            footerText={
+              !selectedNode
+                ? 'Select a node to check availability'
+                : diskError !== ''
+                  ? diskError
+                  : `Available: ${availDiskGb} GB`
             }
+            footerError={!!selectedNode && diskError !== ''}
             open={dialOpen === 'disk'}
             onOpenChange={(o) => onDialOpenChange(o ? 'disk' : null)}
           />
@@ -287,17 +288,17 @@ function CreateServerForm({
             onValueChange={(v) => setDataField('cpuPercent', v)}
             min={MIN_CPU_PERCENT}
             max={availCpu}
+            fallbackMax={400}
             unit="%"
             invalid={cpuError !== ''}
-            footer={
-              cpuError !== '' ? (
-                <p className="text-xs text-[var(--destructive)]">{cpuError}</p>
-              ) : (
-                <p className="text-xs text-muted-foreground">
-                  {availCpu > 0 ? `Available: ${availCpu}%` : `Minimum ${MIN_CPU_PERCENT}%`}
-                </p>
-              )
+            footerText={
+              !selectedNode
+                ? 'Select a node to check availability'
+                : cpuError !== ''
+                  ? cpuError
+                  : `Available: ${availCpu}%`
             }
+            footerError={!!selectedNode && cpuError !== ''}
             open={dialOpen === 'cpu'}
             onOpenChange={(o) => onDialOpenChange(o ? 'cpu' : null)}
           />
@@ -334,9 +335,11 @@ function DialField({
   onValueChange,
   min,
   max,
+  fallbackMax,
   unit,
   invalid,
-  footer,
+  footerText,
+  footerError,
   open,
   onOpenChange,
 }: {
@@ -345,13 +348,22 @@ function DialField({
   value: string
   onValueChange: (v: string) => void
   min: number
+  /** Capacity of the selected node; 0 until one is picked. */
   max: number
+  /** Ceiling used before a node is selected. */
+  fallbackMax: number
   unit: string
   invalid: boolean
-  footer: ReactNode
+  /** Single-line caption under the input — fixed height so swapping the
+      text never shifts the row. */
+  footerText: string
+  footerError: boolean
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
+  /* Before a node is picked the dial works against the fallback ceiling;
+     capacity validation kicks in once one is selected. */
+  const effectiveMax = max > 0 ? max : fallbackMax
   const dialRef = useRef<HTMLDivElement | null>(null)
   const draggingRef = useRef(false)
   const lastValueRef = useRef(value)
@@ -405,8 +417,8 @@ function DialField({
     // The ring fills continuously at the pointer's exact angle while
     // dragging (no notch stepping); the committed GB value stays an integer.
     setLivePct(Math.round((rel / SWEEP) * 10000) / 100)
-    const raw = Math.round((rel / SWEEP) * max)
-    const clamped = Math.max(min, Math.min(max, raw))
+    const raw = Math.round((rel / SWEEP) * effectiveMax)
+    const clamped = Math.max(min, Math.min(effectiveMax, raw))
     const next = String(clamped)
     if (next !== lastValueRef.current) {
       lastValueRef.current = next
@@ -436,7 +448,7 @@ function DialField({
     if (maxBtnRef.current) placeSeg(maxBtnRef.current, 0)
   }, [])
 
-  const pct = max > 0 ? Math.min(100, Math.max(0, ((parseInt(value) || 0) / max) * 100)) : 0
+  const pct = Math.min(100, Math.max(0, ((parseInt(value) || 0) / effectiveMax) * 100))
 
   return (
     <div className="grid gap-2">
@@ -493,17 +505,15 @@ function DialField({
               geometryScrubbing
               minWidth={216}
             />
-            {/* Center readout — a plain tabular number (no odometer
-                animation: it lagged behind fast drags) with the unit beside
-                it. GB values are short, so this always fits the hub. */}
+            {/* Center readout — the odometer tweens between values while
+                the dial drags; GB values are short so it fits the hub. */}
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
               <div className="flex items-baseline gap-1">
-                <span
+                <NumberFlow
+                  value={parseInt(value) || 0}
                   className="font-semibold tabular-nums text-[var(--fg)]"
-                  style={{ fontSize: Math.min(30, 120 / Math.max(1, value.length)), lineHeight: 1 }}
-                >
-                  {value}
-                </span>
+                  style={{ fontSize: 28, lineHeight: 1 }}
+                />
                 <span className="text-xs font-medium text-[var(--fg-muted)]">{unit}</span>
               </div>
             </div>
@@ -527,7 +537,7 @@ function DialField({
               ref={maxBtnRef}
               type="button"
               onMouseEnter={(e) => slideSeg(e.currentTarget)}
-              onClick={() => onValueChange(String(max))}
+              onClick={() => onValueChange(String(effectiveMax))}
               className="relative z-10 rounded-md px-2.5 py-1 text-[11px] font-medium text-[var(--fg-muted)] transition-colors hover:text-[var(--fg)]"
             >
               Max
@@ -543,7 +553,11 @@ function DialField({
           </div>
         </PopoverContent>
       </Popover>
-      {footer}
+      <div className="h-[18px] overflow-hidden">
+        <p className={`text-xs truncate ${footerError ? 'text-[var(--destructive)]' : 'text-muted-foreground'}`}>
+          {footerText}
+        </p>
+      </div>
     </div>
   )
 }
