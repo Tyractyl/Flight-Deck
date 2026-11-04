@@ -1,10 +1,11 @@
-import { useRef, useState } from 'react'
-import type { FormEvent, PointerEvent as ReactPointerEvent } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import type { FormEvent, ReactNode } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { X } from 'lucide-react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { GaugeIcon } from '@hugeicons/core-free-icons'
 import { Gauge } from '../../components/charts/gauge'
+import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/popover'
 import { createServer } from '../../api/servers'
 import { listEggs } from '../../api/eggs'
 import { listNodes } from '../../api/nodes'
@@ -45,9 +46,19 @@ export function CreateServerDialog() {
 }
 
 function CreateServerModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  /* Which dial popover is open, if any. The dialog refuses Escape while one
+     is open so a single Escape press closes the popover and not the whole
+     dialog. */
+  const [dialOpen, setDialOpen] = useState<'memory' | 'disk' | 'cpu' | null>(null)
+
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
-      <DialogContent className="gap-0 overflow-hidden border-[color-mix(in_srgb,var(--fg)_5%,transparent)] p-0 sm:max-w-2xl">
+      <DialogContent
+        className="gap-0 overflow-hidden border-[color-mix(in_srgb,var(--fg)_5%,transparent)] p-0 sm:max-w-2xl"
+        onEscapeKeyDown={(event) => {
+          if (dialOpen) event.preventDefault()
+        }}
+      >
         {/* Textured frame behind the title and footer areas */}
         <PlaceholderPattern
           patternSize={10}
@@ -60,13 +71,27 @@ function CreateServerModal({ open, onClose }: { open: boolean; onClose: () => vo
             <span className="sr-only">Close</span>
           </DialogClose>
         </DialogHeader>
-        {open && <CreateServerForm onClose={onClose} />}
+        {open && (
+          <CreateServerForm
+            onClose={onClose}
+            dialOpen={dialOpen}
+            onDialOpenChange={setDialOpen}
+          />
+        )}
       </DialogContent>
     </Dialog>
   )
 }
 
-function CreateServerForm({ onClose }: { onClose: () => void }) {
+function CreateServerForm({
+  onClose,
+  dialOpen,
+  onDialOpenChange,
+}: {
+  onClose: () => void
+  dialOpen: 'memory' | 'disk' | 'cpu' | null
+  onDialOpenChange: (v: 'memory' | 'disk' | 'cpu' | null) => void
+}) {
   const queryClient = useQueryClient()
   const [data, setData] = useState<ServerFormData>({
     name: '',
@@ -118,39 +143,6 @@ function CreateServerForm({ onClose }: { onClose: () => void }) {
   const diskError = capacityError(disk, availDisk)
   const cpuError = capacityError(cpu, availCpu)
 
-  /* Dial picker: a small gauge icon on each resource input opens an inline
-     panel with an interactive notch gauge — drag across the dial to set the
-     allocation instead of typing numbers. */
-  const [gaugePanel, setGaugePanel] = useState<'memory' | 'disk' | 'cpu' | null>(null)
-  const gaugeWrapRef = useRef<HTMLDivElement | null>(null)
-  const gaugeDragRef = useRef(false)
-
-  const gaugeResource = (() => {
-    if (gaugePanel === 'memory') return { label: 'Memory', unit: 'MiB', min: MIN_MEMORY_MB, max: availMem, amount: mem, set: (v: number) => setDataField('memoryMb', String(v)) }
-    if (gaugePanel === 'disk') return { label: 'Disk', unit: 'MiB', min: MIN_DISK_MB, max: availDisk, amount: disk, set: (v: number) => setDataField('diskMb', String(v)) }
-    if (gaugePanel === 'cpu') return { label: 'CPU', unit: '%', min: MIN_CPU_PERCENT, max: availCpu, amount: cpu, set: (v: number) => setDataField('cpuPercent', String(v)) }
-    return null
-  })()
-
-  const gaugePct = gaugeResource && gaugeResource.max > 0
-    ? Math.min(100, Math.max(0, (gaugeResource.amount / gaugeResource.max) * 100))
-    : 0
-
-  const setGaugeFromPointer = (clientX: number, clientY: number) => {
-    const el = gaugeWrapRef.current
-    if (!el || !gaugeResource || gaugeResource.max <= 0) return
-    const rect = el.getBoundingClientRect()
-    const dx = clientX - (rect.left + rect.width / 2)
-    const dy = clientY - (rect.top + rect.height / 2)
-    // Degrees clockwise from 12 o'clock; the dial sweeps 135°→405°.
-    const angle = (Math.atan2(dx, -dy) * 180) / Math.PI
-    const rel = ((angle - 135) + 360) % 360
-    const within = Math.min(Math.max(rel, 0), 270)
-    const pct = (within / 270) * 100
-    const raw = Math.round((pct / 100) * gaugeResource.max)
-    const clamped = Math.max(gaugeResource.min, Math.min(gaugeResource.max, raw))
-    gaugeResource.set(clamped)
-  }
 
   const isValid =
     data.name.trim() !== '' &&
@@ -235,189 +227,70 @@ function CreateServerForm({ onClose }: { onClose: () => void }) {
         </div>
 
         <div className="grid gap-2 sm:grid-cols-3 sm:gap-4">
-          <div className="grid gap-2">
-            <Label htmlFor="server-memory">Memory (MiB)</Label>
-            <div className="group relative">
-              <Input
-                id="server-memory"
-                type="number"
-                min={MIN_MEMORY_MB}
-                max={availMem > 0 ? availMem : undefined}
-                value={data.memoryMb}
-                onChange={(event) => setDataField('memoryMb', event.target.value)}
-                required
-                aria-invalid={memError !== ''}
-                className="pr-14"
-              />
-              {selectedNode && (
-                <button
-                  type="button"
-                  aria-label="Pick with the dial"
-                  aria-pressed={gaugePanel === 'memory'}
-                  title="Pick with the dial"
-                  onClick={() => setGaugePanel(gaugePanel === 'memory' ? null : 'memory')}
-                  className={`absolute right-1.5 top-1/2 -translate-y-1/2 rounded-md p-1 transition-colors duration-150 hover:bg-[var(--fg)]/5 ${
-                    gaugePanel === 'memory'
-                      ? 'text-[var(--fg)]'
-                      : 'text-[var(--fg-faint)] hover:text-[var(--fg)]'
-                  }`}
-                >
-                  <HugeiconsIcon icon={GaugeIcon} size={13} />
-                </button>
-              )}
-            </div>
-            {memError !== '' ? (
-              <p className="text-xs text-[var(--destructive)]">{memError}</p>
-            ) : (
-              <p className="text-xs text-muted-foreground">
-                {availMem > 0 ? `Available: ${availMem.toLocaleString()} MiB (${(availMem / 1024).toFixed(1)} GiB)` : `Minimum ${MIN_MEMORY_MB} MiB`}
-              </p>
-            )}
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="server-disk">Disk (MiB)</Label>
-            <div className="group relative">
-              <Input
-                id="server-disk"
-                type="number"
-                min={MIN_DISK_MB}
-                max={availDisk > 0 ? availDisk : undefined}
-                value={data.diskMb}
-                onChange={(event) => setDataField('diskMb', event.target.value)}
-                required
-                aria-invalid={diskError !== ''}
-                className="pr-14"
-              />
-              {selectedNode && (
-                <button
-                  type="button"
-                  aria-label="Pick with the dial"
-                  aria-pressed={gaugePanel === 'disk'}
-                  title="Pick with the dial"
-                  onClick={() => setGaugePanel(gaugePanel === 'disk' ? null : 'disk')}
-                  className={`absolute right-1.5 top-1/2 -translate-y-1/2 rounded-md p-1 transition-colors duration-150 hover:bg-[var(--fg)]/5 ${
-                    gaugePanel === 'disk'
-                      ? 'text-[var(--fg)]'
-                      : 'text-[var(--fg-faint)] hover:text-[var(--fg)]'
-                  }`}
-                >
-                  <HugeiconsIcon icon={GaugeIcon} size={13} />
-                </button>
-              )}
-            </div>
-            {diskError !== '' ? (
-              <p className="text-xs text-[var(--destructive)]">{diskError}</p>
-            ) : (
-              <p className="text-xs text-muted-foreground">
-                {availDisk > 0 ? `Available: ${availDisk.toLocaleString()} MiB (${(availDisk / 1024).toFixed(1)} GiB)` : `Minimum ${MIN_DISK_MB} MiB`}
-              </p>
-            )}
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="server-cpu">CPU (%)</Label>
-            <div className="group relative">
-              <Input
-                id="server-cpu"
-                type="number"
-                min={MIN_CPU_PERCENT}
-                max={availCpu > 0 ? availCpu : undefined}
-                value={data.cpuPercent}
-                onChange={(event) => setDataField('cpuPercent', event.target.value)}
-                required
-                aria-invalid={cpuError !== ''}
-                className="pr-14"
-              />
-              {selectedNode && (
-                <button
-                  type="button"
-                  aria-label="Pick with the dial"
-                  aria-pressed={gaugePanel === 'cpu'}
-                  title="Pick with the dial"
-                  onClick={() => setGaugePanel(gaugePanel === 'cpu' ? null : 'cpu')}
-                  className={`absolute right-1.5 top-1/2 -translate-y-1/2 rounded-md p-1 transition-colors duration-150 hover:bg-[var(--fg)]/5 ${
-                    gaugePanel === 'cpu'
-                      ? 'text-[var(--fg)]'
-                      : 'text-[var(--fg-faint)] hover:text-[var(--fg)]'
-                  }`}
-                >
-                  <HugeiconsIcon icon={GaugeIcon} size={13} />
-                </button>
-              )}
-            </div>
-            {cpuError !== '' ? (
-              <p className="text-xs text-[var(--destructive)]">{cpuError}</p>
-            ) : (
-              <p className="text-xs text-muted-foreground">
-                {availCpu > 0 ? `Available: ${availCpu}%` : `Minimum ${MIN_CPU_PERCENT}%`}
-              </p>
-            )}
-          </div>
+          <DialField
+            id="server-memory"
+            label="Memory (MiB)"
+            value={data.memoryMb}
+            onValueChange={(v) => setDataField('memoryMb', v)}
+            min={MIN_MEMORY_MB}
+            max={availMem}
+            unit="MiB"
+            invalid={memError !== ''}
+            footer={
+              memError !== '' ? (
+                <p className="text-xs text-[var(--destructive)]">{memError}</p>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  {availMem > 0 ? `Available: ${availMem.toLocaleString()} MiB (${(availMem / 1024).toFixed(1)} GiB)` : `Minimum ${MIN_MEMORY_MB} MiB`}
+                </p>
+              )
+            }
+            open={dialOpen === 'memory'}
+            onOpenChange={(o) => onDialOpenChange(o ? 'memory' : null)}
+          />
+          <DialField
+            id="server-disk"
+            label="Disk (MiB)"
+            value={data.diskMb}
+            onValueChange={(v) => setDataField('diskMb', v)}
+            min={MIN_DISK_MB}
+            max={availDisk}
+            unit="MiB"
+            invalid={diskError !== ''}
+            footer={
+              diskError !== '' ? (
+                <p className="text-xs text-[var(--destructive)]">{diskError}</p>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  {availDisk > 0 ? `Available: ${availDisk.toLocaleString()} MiB (${(availDisk / 1024).toFixed(1)} GiB)` : `Minimum ${MIN_DISK_MB} MiB`}
+                </p>
+              )
+            }
+            open={dialOpen === 'disk'}
+            onOpenChange={(o) => onDialOpenChange(o ? 'disk' : null)}
+          />
+          <DialField
+            id="server-cpu"
+            label="CPU (%)"
+            value={data.cpuPercent}
+            onValueChange={(v) => setDataField('cpuPercent', v)}
+            min={MIN_CPU_PERCENT}
+            max={availCpu}
+            unit="%"
+            invalid={cpuError !== ''}
+            footer={
+              cpuError !== '' ? (
+                <p className="text-xs text-[var(--destructive)]">{cpuError}</p>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  {availCpu > 0 ? `Available: ${availCpu}%` : `Minimum ${MIN_CPU_PERCENT}%`}
+                </p>
+              )
+            }
+            open={dialOpen === 'cpu'}
+            onOpenChange={(o) => onDialOpenChange(o ? 'cpu' : null)}
+          />
         </div>
-
-        {gaugePanel && gaugeResource && gaugeResource.max > 0 && (
-          <div className="flex flex-col items-center gap-4 rounded-lg border border-[var(--border)] bg-[var(--bg)]/40 p-4 sm:flex-row sm:gap-6">
-            <div
-              ref={gaugeWrapRef}
-              className="w-[220px] shrink-0 cursor-pointer select-none"
-              style={{ touchAction: 'none' }}
-              onPointerDown={(e) => {
-                gaugeDragRef.current = true
-                e.currentTarget.setPointerCapture?.(e.pointerId)
-                setGaugeFromPointer(e.clientX, e.clientY)
-              }}
-              onPointerMove={(e: ReactPointerEvent<HTMLDivElement>) => {
-                if (gaugeDragRef.current) setGaugeFromPointer(e.clientX, e.clientY)
-              }}
-              onPointerUp={() => { gaugeDragRef.current = false }}
-              onPointerCancel={() => { gaugeDragRef.current = false }}
-            >
-              <Gauge
-                value={gaugePct}
-                totalNotches={28}
-                spacing={30}
-                centerValue={gaugeResource.amount}
-                suffix={` ${gaugeResource.unit}`}
-                defaultLabel={`of ${gaugeResource.max.toLocaleString()} max`}
-                minWidth={220}
-              />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium text-[var(--fg)]">
-                {gaugeResource.label} dial
-              </p>
-              <p className="mt-1 text-xs text-[var(--fg-muted)]">
-                Drag across the dial to choose how much {gaugeResource.label.toLowerCase()} this
-                server gets — it snaps to notches and clamps to the node's free capacity.
-              </p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  height={22}
-                  onClick={() => gaugeResource.set(gaugeResource.max)}
-                >
-                  Max
-                </Button>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  height={22}
-                  onClick={() => gaugeResource.set(gaugeResource.min)}
-                >
-                  Minimum
-                </Button>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  height={22}
-                  onClick={() => setGaugePanel(null)}
-                >
-                  Done
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
         </div>
       </div>
 
@@ -432,5 +305,180 @@ function CreateServerForm({ onClose }: { onClose: () => void }) {
         </Button>
       </div>
     </form>
+  )
+}
+
+
+/*
+ * DialField — a resource allocation input whose gauge icon opens a floating
+ * popover with an interactive notch gauge. The popover is portaled, so
+ * opening it never reflows the dialog. Dragging across the dial applies the
+ * value once per animation frame (snapped to notches, clamped to
+ * [min, max]) so the drag tracks the pointer 1:1 without jank.
+ */
+function DialField({
+  id,
+  label,
+  value,
+  onValueChange,
+  min,
+  max,
+  unit,
+  invalid,
+  footer,
+  open,
+  onOpenChange,
+}: {
+  id: string
+  label: string
+  value: string
+  onValueChange: (v: string) => void
+  min: number
+  max: number
+  unit: string
+  invalid: boolean
+  footer: ReactNode
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}) {
+  const dialRef = useRef<HTMLDivElement | null>(null)
+  const draggingRef = useRef(false)
+  const rafRef = useRef<number | null>(null)
+  const pointerRef = useRef<{ x: number; y: number } | null>(null)
+  const lastValueRef = useRef(value)
+
+  lastValueRef.current = value
+
+  // Drop the pending animation frame when the field unmounts.
+  useEffect(() => {
+    return () => {
+      if (rafRef.current != null) cancelAnimationFrame(rafRef.current)
+    }
+  }, [])
+
+  // Escape closes this dial and nothing else. Handled with a capture-phase
+  // document listener while the popover is open: the event is consumed before
+  // any layered component (the create-server dialog included) can react to
+  // it, so one Escape press closes exactly one layer.
+  useEffect(() => {
+    if (!open) return
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      event.stopPropagation()
+      event.preventDefault()
+      onOpenChange(false)
+    }
+    document.addEventListener('keydown', onKey, true)
+    return () => document.removeEventListener('keydown', onKey, true)
+  }, [open, onOpenChange])
+
+  const applyPointer = () => {
+    rafRef.current = null
+    const ptr = pointerRef.current
+    const el = dialRef.current
+    if (!ptr || !el || max <= 0) return
+    const rect = el.getBoundingClientRect()
+    const dx = ptr.x - (rect.left + rect.width / 2)
+    const dy = ptr.y - (rect.top + rect.height / 2)
+    // Degrees clockwise from 12 o'clock; the dial sweeps 135°→405°.
+    const angle = (Math.atan2(dx, -dy) * 180) / Math.PI
+    const rel = ((angle - 135) + 360) % 360
+    const within = Math.min(Math.max(rel, 0), 270)
+    const raw = Math.round((within / 270) * max)
+    const clamped = Math.max(min, Math.min(max, raw))
+    const next = String(clamped)
+    if (next !== lastValueRef.current) {
+      lastValueRef.current = next
+      onValueChange(next)
+    }
+  }
+
+  const schedulePointer = (clientX: number, clientY: number) => {
+    pointerRef.current = { x: clientX, y: clientY }
+    if (rafRef.current == null) {
+      rafRef.current = requestAnimationFrame(applyPointer)
+    }
+  }
+
+  const pct = max > 0 ? Math.min(100, Math.max(0, ((parseInt(value) || 0) / max) * 100)) : 0
+
+  return (
+    <div className="grid gap-2">
+      <Label htmlFor={id}>{label}</Label>
+      <Popover open={open} onOpenChange={onOpenChange}>
+        <div className="group relative">
+          <Input
+            id={id}
+            type="number"
+            min={min}
+            max={max > 0 ? max : undefined}
+            value={value}
+            onChange={(event) => onValueChange(event.target.value)}
+            required
+            aria-invalid={invalid}
+            className="pr-9"
+          />
+          {max > 0 && (
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                aria-label={`Pick ${label.toLowerCase()} with the dial`}
+                title="Pick with the dial"
+                className={`absolute right-1.5 top-1/2 -translate-y-1/2 rounded-md p-1 transition-colors duration-150 hover:bg-[var(--fg)]/5 ${
+                  open ? 'text-[var(--fg)]' : 'text-[var(--fg-faint)] hover:text-[var(--fg)]'
+                }`}
+              >
+                <HugeiconsIcon icon={GaugeIcon} size={13} />
+              </button>
+            </PopoverTrigger>
+          )}
+        </div>
+        <PopoverContent align="end" sideOffset={6} className="w-[248px] gap-0 p-3">
+          <div
+            ref={dialRef}
+            className="mx-auto w-[216px] cursor-pointer select-none"
+            style={{ touchAction: 'none' }}
+            onPointerDown={(e) => {
+              draggingRef.current = true
+              e.currentTarget.setPointerCapture?.(e.pointerId)
+              schedulePointer(e.clientX, e.clientY)
+            }}
+            onPointerMove={(e) => {
+              if (draggingRef.current) schedulePointer(e.clientX, e.clientY)
+            }}
+            onPointerUp={() => { draggingRef.current = false }}
+            onPointerCancel={() => { draggingRef.current = false }}
+          >
+            <Gauge
+              value={pct}
+              totalNotches={28}
+              spacing={30}
+              geometryScrubbing
+              centerValue={parseInt(value) || 0}
+              suffix={` ${unit}`}
+              defaultLabel={`of ${max.toLocaleString()} max`}
+              minWidth={216}
+            />
+          </div>
+          <div className="mt-2 flex justify-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => onValueChange(String(max))}
+              className="rounded-md px-2 py-1 text-[11px] font-medium text-[var(--fg-muted)] transition-colors hover:bg-[var(--fg)]/5 hover:text-[var(--fg)]"
+            >
+              Max
+            </button>
+            <button
+              type="button"
+              onClick={() => onValueChange(String(min))}
+              className="rounded-md px-2 py-1 text-[11px] font-medium text-[var(--fg-muted)] transition-colors hover:bg-[var(--fg)]/5 hover:text-[var(--fg)]"
+            >
+              Minimum
+            </button>
+          </div>
+        </PopoverContent>
+      </Popover>
+      {footer}
+    </div>
   )
 }
