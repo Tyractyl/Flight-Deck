@@ -52,6 +52,10 @@ export interface Node {
   total_memory: number
   total_disk: number
   total_cpu: number
+  /** Capacity left after existing server allocations — present on the user-facing node list. */
+  free_memory?: number
+  free_disk?: number
+  free_cpu?: number
   gpu_enabled: boolean
   created_at?: string
 }

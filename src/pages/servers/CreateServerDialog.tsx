@@ -5,7 +5,6 @@ import { X } from 'lucide-react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { GaugeIcon } from '@hugeicons/core-free-icons'
 import { Gauge } from '../../components/charts/gauge'
-import NumberFlow from '@number-flow/react'
 import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/popover'
 import { createServer } from '../../api/servers'
 import { listEggs } from '../../api/eggs'
@@ -21,16 +20,18 @@ import Button from '../../components/Button'
 import { useCreateServerDialog } from '../../store/createServerStore'
 import type { Egg, Node } from '../../types/server'
 
-const MIN_MEMORY_MB = 128
-const MIN_DISK_MB = 1024
+/* Allocations are entered in GB (the API takes MiB — values are converted on
+   submit). 1 GB minimum keeps the numbers short and the dial readable. */
+const MIN_MEMORY_GB = 1
+const MIN_DISK_GB = 1
 const MIN_CPU_PERCENT = 10
 
 type ServerFormData = {
   name: string
   eggId: string
   nodeId: string
-  memoryMb: string
-  diskMb: string
+  memoryGb: string
+  diskGb: string
   cpuPercent: string
 }
 
@@ -98,8 +99,8 @@ function CreateServerForm({
     name: '',
     eggId: '',
     nodeId: '',
-    memoryMb: '2048',
-    diskMb: '10240',
+    memoryGb: '2',
+    diskGb: '10',
     cpuPercent: '100',
   })
   const setDataField = <K extends keyof ServerFormData>(key: K, value: ServerFormData[K]) =>
@@ -115,16 +116,19 @@ function CreateServerForm({
     queryFn: listNodes,
   })
 
-  const mem = parseInt(data.memoryMb) || 0
-  const disk = parseInt(data.diskMb) || 0
+  const memGb = parseInt(data.memoryGb) || 0
+  const diskGb = parseInt(data.diskGb) || 0
   const cpu = parseInt(data.cpuPercent) || 0
 
   const eggList: Egg[] = Array.isArray(eggs) ? eggs : []
   const nodeList: Node[] = Array.isArray(nodes) ? nodes : []
   const selectedNode = nodeList.find((n) => n.id === data.nodeId)
-  const availMem = selectedNode?.total_memory ?? 0
-  const availDisk = selectedNode?.total_disk ?? 0
-  const availCpu = selectedNode?.total_cpu ?? 0
+  /* Free capacity (totals minus what existing servers on the node already
+     reserve) — the backend enforces the same numbers, but showing them up
+     front means the form never submits something it would reject. */
+  const availMemGb = Math.floor((selectedNode?.free_memory ?? 0) / 1024)
+  const availDiskGb = Math.floor((selectedNode?.free_disk ?? 0) / 1024)
+  const availCpu = selectedNode?.free_cpu ?? 0
 
   const eggOptions: SearchableSelectOption[] = eggList.map((egg) => ({
     value: egg.id,
@@ -140,8 +144,8 @@ function CreateServerForm({
   const capacityError = (value: number, avail: number) =>
     selectedNode ? (avail <= 0 ? 'No capacity is available on this node.' : value > avail ? 'Exceeds the capacity of this node.' : '') : ''
 
-  const memError = capacityError(mem, availMem)
-  const diskError = capacityError(disk, availDisk)
+  const memError = capacityError(memGb, availMemGb)
+  const diskError = capacityError(diskGb, availDiskGb)
   const cpuError = capacityError(cpu, availCpu)
 
 
@@ -149,8 +153,8 @@ function CreateServerForm({
     data.name.trim() !== '' &&
     data.eggId !== '' &&
     data.nodeId !== '' &&
-    mem >= MIN_MEMORY_MB &&
-    disk >= MIN_DISK_MB &&
+    memGb >= MIN_MEMORY_GB &&
+    diskGb >= MIN_DISK_GB &&
     cpu >= MIN_CPU_PERCENT &&
     memError === '' &&
     diskError === '' &&
@@ -162,8 +166,8 @@ function CreateServerForm({
         name: data.name,
         egg_id: data.eggId,
         node_id: data.nodeId,
-        memory_mb: mem,
-        disk_mb: disk,
+        memory_mb: memGb * 1024,
+        disk_mb: diskGb * 1024,
         cpu_percent: cpu,
       }),
     onSuccess: () => {
@@ -230,19 +234,19 @@ function CreateServerForm({
         <div className="grid gap-2 sm:grid-cols-3 sm:gap-4">
           <DialField
             id="server-memory"
-            label="Memory (MiB)"
-            value={data.memoryMb}
-            onValueChange={(v) => setDataField('memoryMb', v)}
-            min={MIN_MEMORY_MB}
-            max={availMem}
-            unit="MiB"
+            label="Memory (GB)"
+            value={data.memoryGb}
+            onValueChange={(v) => setDataField('memoryGb', v)}
+            min={MIN_MEMORY_GB}
+            max={availMemGb}
+            unit="GB"
             invalid={memError !== ''}
             footer={
               memError !== '' ? (
                 <p className="text-xs text-[var(--destructive)]">{memError}</p>
               ) : (
                 <p className="text-xs text-muted-foreground">
-                  {availMem > 0 ? `Available: ${availMem.toLocaleString()} MiB (${(availMem / 1024).toFixed(1)} GiB)` : `Minimum ${MIN_MEMORY_MB} MiB`}
+                  {availMemGb > 0 ? `Available: ${availMemGb} GB` : `Minimum ${MIN_MEMORY_GB} GB`}
                 </p>
               )
             }
@@ -251,19 +255,19 @@ function CreateServerForm({
           />
           <DialField
             id="server-disk"
-            label="Disk (MiB)"
-            value={data.diskMb}
-            onValueChange={(v) => setDataField('diskMb', v)}
-            min={MIN_DISK_MB}
-            max={availDisk}
-            unit="MiB"
+            label="Disk (GB)"
+            value={data.diskGb}
+            onValueChange={(v) => setDataField('diskGb', v)}
+            min={MIN_DISK_GB}
+            max={availDiskGb}
+            unit="GB"
             invalid={diskError !== ''}
             footer={
               diskError !== '' ? (
                 <p className="text-xs text-[var(--destructive)]">{diskError}</p>
               ) : (
                 <p className="text-xs text-muted-foreground">
-                  {availDisk > 0 ? `Available: ${availDisk.toLocaleString()} MiB (${(availDisk / 1024).toFixed(1)} GiB)` : `Minimum ${MIN_DISK_MB} MiB`}
+                  {availDiskGb > 0 ? `Available: ${availDiskGb} GB` : `Minimum ${MIN_DISK_GB} GB`}
                 </p>
               )
             }
@@ -487,20 +491,17 @@ function DialField({
               geometryScrubbing
               minWidth={216}
             />
-            {/* Center readout, fitted to the hub: the number shrinks as it
-                gets longer so long values stay inside the ring. */}
-            <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-              <NumberFlow
-                value={parseInt(value) || 0}
+            {/* Center readout — a plain tabular number (no odometer
+                animation: it lagged behind fast drags) with the unit beside
+                it. GB values are short, so this always fits the hub. */}
+            <div className="pointer-events-none absolute inset-0 flex items-baseline justify-center">
+              <span
                 className="font-semibold tabular-nums text-[var(--fg)]"
-                style={{
-                  fontSize: Math.min(26, 128 / Math.max(3, (parseInt(value) || 0).toLocaleString().length)),
-                  lineHeight: 1.05,
-                }}
-              />
-              <span className="mt-0.5 text-[10px] text-[var(--fg-muted)]">
-                {unit === '%' ? `of ${max}% max` : `${unit} · of ${max.toLocaleString()} max`}
+                style={{ fontSize: Math.min(30, 120 / Math.max(1, value.length)), lineHeight: 1 }}
+              >
+                {value}
               </span>
+              <span className="text-xs font-medium text-[var(--fg-muted)]">{unit}</span>
             </div>
           </div>
           <div className="mt-2 flex justify-center gap-1.5">
