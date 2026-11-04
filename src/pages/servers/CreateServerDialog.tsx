@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { X } from 'lucide-react'
@@ -351,6 +351,10 @@ function DialField({
   const rafRef = useRef<number | null>(null)
   const pointerRef = useRef<{ x: number; y: number } | null>(null)
   const lastValueRef = useRef(value)
+  /* While dragging, the ring fills at the pointer's exact angle instead of
+     jumping between whole-GB notches; it snaps back to the committed value
+     when the drag ends. */
+  const [livePct, setLivePct] = useState<number | null>(null)
 
   lastValueRef.current = value
 
@@ -403,6 +407,9 @@ function DialField({
     const SWEEP = 264
     const rel = ((angle - START_ANGLE) + 360) % 360
     if (rel > SWEEP) return
+    // The ring fills continuously at the pointer's exact angle while
+    // dragging (no notch stepping); the committed GB value stays an integer.
+    setLivePct(Math.round((rel / SWEEP) * 10000) / 100)
     const raw = Math.round((rel / SWEEP) * max)
     const clamped = Math.max(min, Math.min(max, raw))
     const next = String(clamped)
@@ -424,16 +431,22 @@ function DialField({
   }
 
   /* Sliding highlight for the Max/Minimum shortcuts — the same frame-measured
-     glide the top navigation uses. */
+     glide the top navigation uses. The pill rests on Max from the start so
+     the first hover slides from there instead of flying in from nowhere. */
   const segRef = useRef<HTMLDivElement | null>(null)
+  const maxBtnRef = useRef<HTMLButtonElement | null>(null)
   const [segPill, setSegPill] = useState({ left: 0, width: 0, opacity: 0 })
-  const slideSeg = (el: HTMLElement) => {
+  const placeSeg = (el: HTMLElement, opacity: number) => {
     const seg = segRef.current
     if (!seg) return
     const segRect = seg.getBoundingClientRect()
     const rect = el.getBoundingClientRect()
-    setSegPill({ left: rect.left - segRect.left, width: rect.width, opacity: 1 })
+    setSegPill({ left: rect.left - segRect.left, width: rect.width, opacity })
   }
+  const slideSeg = (el: HTMLElement) => placeSeg(el, 1)
+  useLayoutEffect(() => {
+    if (maxBtnRef.current) placeSeg(maxBtnRef.current, 0)
+  }, [])
 
   const pct = max > 0 ? Math.min(100, Math.max(0, ((parseInt(value) || 0) / max) * 100)) : 0
 
@@ -484,11 +497,11 @@ function DialField({
             onPointerMove={(e) => {
               if (draggingRef.current) schedulePointer(e.clientX, e.clientY)
             }}
-            onPointerUp={resetDialState}
-            onPointerCancel={resetDialState}
+            onPointerUp={() => { draggingRef.current = false; resetDialState(); setLivePct(null) }}
+            onPointerCancel={() => { draggingRef.current = false; resetDialState(); setLivePct(null) }}
           >
             <Gauge
-              value={pct}
+              value={livePct ?? pct}
               totalNotches={28}
               spacing={30}
               geometryScrubbing
@@ -525,6 +538,7 @@ function DialField({
               }}
             />
             <button
+              ref={maxBtnRef}
               type="button"
               onMouseEnter={(e) => slideSeg(e.currentTarget)}
               onClick={() => onValueChange(String(max))}

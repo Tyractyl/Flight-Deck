@@ -35,9 +35,36 @@ export function SearchableSelect({
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState("")
   const inputRef = useRef<HTMLInputElement>(null)
-  const listRef = useRef<HTMLDivElement>(null)
+  const listRef = useRef<HTMLDivElement | null>(null)
   const searchCaretRef = useSlidingCaret<HTMLDivElement>()
   const [hoverBox, setHoverBox] = useState({ top: 0, height: 0, opacity: 0 })
+  // When this popover is open inside a modal dialog, the dialog's scroll lock
+  // swallows wheel events aimed at the portaled list. A native non-passive
+  // listener (attached in the ref callback, when the node actually mounts)
+  // scrolls the options manually — React's onWheel is passive, so
+  // preventDefault wouldn't stick there.
+  const wheelHandlerRef = useRef<((e: WheelEvent) => void) | null>(null)
+  const attachListRef = (node: HTMLDivElement | null) => {
+    if (listRef.current && wheelHandlerRef.current) {
+      listRef.current.removeEventListener('wheel', wheelHandlerRef.current)
+    }
+    listRef.current = node
+    wheelHandlerRef.current = null
+    if (node) {
+      const handler = (e: WheelEvent) => {
+        const canScroll = node.scrollHeight > node.clientHeight
+        const up = e.deltaY < 0
+        const atEdge = (up && node.scrollTop <= 0) || (!up && node.scrollTop + node.clientHeight >= node.scrollHeight)
+        if (canScroll && !atEdge) {
+          e.preventDefault()
+          e.stopPropagation()
+          node.scrollTop += e.deltaY
+        }
+      }
+      wheelHandlerRef.current = handler
+      node.addEventListener('wheel', handler, { passive: false })
+    }
+  }
 
   const selected = options.find((o) => o.value === value)
   const query = search.toLowerCase()
@@ -111,7 +138,7 @@ export function SearchableSelect({
           </div>
         </div>
         <div
-          ref={listRef}
+          ref={attachListRef}
           className="relative max-h-60 overflow-y-auto p-1"
           onMouseLeave={() => setHoverBox((b) => ({ ...b, opacity: 0 }))}
         >
