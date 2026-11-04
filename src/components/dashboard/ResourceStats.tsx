@@ -38,7 +38,7 @@ function ResourceCard({
   const displayTotal = unit === 'memory' ? formatMemory(total) : `${total}${unit === 'percent' ? '%' : ''}`
 
   return (
-    <div className="relative flex h-full flex-col p-3 bg-[var(--bg-card)] border border-[var(--border)] rounded-lg overflow-hidden">
+    <div className="relative flex h-full flex-col p-3 bg-[var(--bg-card)] border border-[color-mix(in_srgb,var(--fg)_5%,transparent)] rounded-lg overflow-hidden">
       <div
         className="pointer-events-none absolute bottom-0 left-0 w-full h-16 bg-gradient-to-t from-[var(--fg)]/[0.12] to-transparent"
         aria-hidden="true"

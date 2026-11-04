@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { Search01Icon, ArrowLeft01Icon, ArrowRight01Icon, MoreVerticalIcon } from '@hugeicons/core-free-icons'
-import { Skeleton } from 'parthenon-ui/components'
+import { Skeleton } from '@/components/ui/Skeleton'
 import { PlaceholderPattern } from '../ui/PlaceholderPattern'
 import { Input } from '../ui/Input'
 

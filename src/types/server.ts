@@ -46,13 +46,14 @@ export interface Node {
   name: string
   fqdn: string
   port: number
-  token: string
+  /** Enrollment token — present only on admin endpoints. */
+  token?: string
   is_online: boolean
   total_memory: number
   total_disk: number
   total_cpu: number
   gpu_enabled: boolean
-  created_at: string
+  created_at?: string
 }
 
 export interface Egg {
@@ -103,4 +104,27 @@ export interface ServerStats {
   disk_total: number
   network_in: number
   network_out: number
+}
+
+export interface ServerUser {
+  id: string
+  email: string
+  permissions: string[]
+}
+
+export interface ServerAllocation {
+  id: string
+  ip: string
+  port: number
+  isPrimary: boolean
+  notes?: string
+}
+
+export interface FirewallRule {
+  id: string
+  ip: string
+  port: number
+  protocol?: string
+  action: 'allow' | 'deny'
+  note?: string
 }

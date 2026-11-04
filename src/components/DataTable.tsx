@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import api from '@/api/client';
 import { CheckIcon, ChevronLeft, ChevronRight, MinusIcon, Search, Trash2, XIcon } from 'lucide-react';
-import { Skeleton } from 'parthenon-ui/components';
+import { Skeleton } from '@/components/ui/Skeleton';
 import type { ReactNode } from 'react';
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -64,7 +64,7 @@ function Button({
                 'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50',
                 variant === 'default' && 'bg-primary text-primary-foreground hover:bg-primary/90',
                 variant === 'destructive' && 'bg-destructive text-white hover:bg-destructive/90',
-                variant === 'outline' && 'border border-input bg-background hover:bg-accent hover:text-accent-foreground',
+                variant === 'outline' && 'bg-input/50 dark:bg-input hover:bg-accent hover:text-accent-foreground',
                 variant === 'ghost' && 'hover:bg-accent hover:text-accent-foreground',
                 size === 'default' && 'h-9 px-4 py-2',
                 size === 'table' && 'h-7 rounded-md px-2.5 text-xs',
@@ -111,7 +111,7 @@ function Input({
     return (
         <input
             className={cn(
-                'w-full min-w-0 rounded-md border border-input bg-transparent shadow-xs transition-colors outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50',
+                'w-full min-w-0 rounded-md bg-input/50 dark:bg-input transition-[color,box-shadow] duration-200 outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50',
                 variant === 'default' && 'h-9 px-3 py-1 text-base md:text-sm',
                 variant === 'table' && 'h-7 px-2.5 py-0.5 text-xs',
                 className,
@@ -165,7 +165,7 @@ function AlertDialogContent({ children, className }: { children: React.ReactNode
                 onClick={() => onOpenChange(false)}
                 aria-hidden="true"
             />
-            <div className={cn('relative z-50 w-full max-w-lg rounded-lg border bg-background p-6 shadow-xl', className)}>
+            <div className={cn('relative z-50 w-full max-w-lg rounded-lg border border-[var(--border)] bg-card p-6 shadow-xl', className)}>
                 <button
                     type="button"
                     onClick={() => onOpenChange(false)}
@@ -216,7 +216,7 @@ function AlertDialogCancel({ className, onClick, ...props }: React.ComponentProp
         <button
             type="button"
             className={cn(
-                'inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground focus:outline-none disabled:opacity-50',
+                'inline-flex items-center justify-center rounded-md bg-input/50 dark:bg-input px-4 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground focus:outline-none disabled:opacity-50',
                 className,
             )}
             onClick={(e) => {
@@ -527,25 +527,33 @@ function BulkActionBar({
 
     const bar = (
         <>
-            {/* Subtle bottom gradient */}
+            {/* Backdrop blur */}
             <div
                 aria-hidden="true"
                 className={cn(
-                    'pointer-events-none fixed inset-x-0 bottom-0 z-40 h-24 bg-gradient-to-t from-[var(--bg)]/80 to-transparent transition-opacity duration-300 ease-out',
-                    count > 0 ? 'opacity-100' : 'opacity-0',
-                )}
-            />
-
-            {/* Action bar */}
-            <div
-                className={cn(
-                    'pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center transition-all duration-300 ease-out',
+                    'pointer-events-none fixed inset-x-0 -bottom-4 z-40 h-52 transition-all duration-300 ease-out',
                     count > 0
                         ? 'translate-y-0 opacity-100'
                         : 'translate-y-full opacity-0',
                 )}
             >
-                <div className="pointer-events-auto mb-6 flex items-center gap-3 rounded-xl border border-[var(--border-strong)] bg-[var(--bg-card)] px-4 py-2.5 shadow-lg">
+                <div className="absolute inset-x-0 bottom-0 h-1/4 backdrop-blur-md" />
+                <div className="absolute inset-x-0 bottom-0 h-2/4 backdrop-blur-sm" />
+                <div className="absolute inset-x-0 bottom-0 h-3/4 backdrop-blur-[2px]" />
+                <div className="absolute inset-x-0 bottom-0 h-full backdrop-blur-[1px]" />
+                <div className="absolute inset-0 bg-gradient-to-t from-[var(--bg)]/60 to-transparent" />
+            </div>
+
+            {/* Action bar */}
+            <div
+                className={cn(
+                    'fixed inset-x-0 bottom-0 z-50 flex justify-center transition-all duration-300 ease-out',
+                    count > 0
+                        ? 'translate-y-0 opacity-100'
+                        : 'pointer-events-none translate-y-full opacity-0',
+                )}
+            >
+                <div className="pointer-events-auto mb-6 flex items-center gap-3 rounded-xl border border-[var(--border)]/70 bg-[var(--bg-card)]/95 px-4 py-2.5 shadow-lg backdrop-blur">
                     <span className="text-xs font-medium text-[var(--fg-muted)]">
                         {count} {plural} selected
                     </span>
@@ -646,21 +654,26 @@ function DataTableRow<T extends { id: string | number }>({
         <div
             className={cn(
                 'group relative overflow-hidden rounded-lg transition-colors duration-150 ease-out',
-                isSelected ? 'bg-[var(--accent)]/10' : ''
+                isSelected ? 'bg-[var(--bg-elevated)]/40' : 'hover:bg-[var(--bg-elevated)]/20'
             )}
         >
-            <div className={cn(
-                'pointer-events-none absolute inset-0 overflow-hidden rounded-lg transition-opacity',
-                isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-            )}>
+            <div
+                className={cn(
+                    'pointer-events-none absolute inset-0 overflow-hidden rounded-lg transition-opacity',
+                    isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                )}
+            >
                 <PlaceholderPattern
                     patternSize={6}
-                    className="size-full stroke-[var(--fg)]/10"
+                    className={cn(
+                        'size-full',
+                        isSelected ? 'stroke-[var(--fg)]/[0.12]' : 'stroke-[var(--fg)]/10'
+                    )}
                 />
             </div>
             <div
                 className={cn(
-                    'relative flex items-center px-3 py-2',
+                    'relative flex items-center rounded-lg px-3 py-2',
                     onClick && 'cursor-pointer',
                 )}
                 onClick={onClick}
@@ -802,7 +815,7 @@ export function DataTable<T extends { id: string | number }>({
     return (
         <>
             {/* Connected card: top toolbar, body, bottom toolbar */}
-            <div className="relative overflow-hidden rounded-2xl border border-border/70 bg-muted/80 shadow-sm">
+            <div className="relative overflow-hidden rounded-xl border border-[color-mix(in_srgb,var(--fg)_5%,transparent)] bg-[var(--bg-card)] shadow-sm">
                 {/* Top toolbar: labels + actions */}
                 <div className="flex flex-col gap-2 px-4 py-2 pb-4 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex min-w-0 flex-1 items-center">
@@ -839,7 +852,7 @@ export function DataTable<T extends { id: string | number }>({
                 {/* Body */}
                 <div
                     ref={tableBodyRef}
-                    className="relative z-10 -my-2 mx-0 overflow-hidden rounded-xl bg-background px-1"
+                    className="relative z-10 -my-2 mx-0 overflow-hidden rounded-lg bg-[var(--bg-elevated)] px-1"
                 >
                     <div ref={innerRef} className="flex flex-col gap-1 py-1">
                         {loading ? (

@@ -4,9 +4,9 @@ import { listTenants, createTenant, deleteTenant, listTenantMembers, removeTenan
 
 import Button from '../../components/Button'
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card'
-import { Modal } from '../../components/ui/Modal'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog'
 import { Input } from '../../components/ui/Input'
-import { Skeleton } from 'parthenon-ui/components'
+import { Skeleton } from '@/components/ui/Skeleton'
 import { sileo } from 'sileo'
 import { useAuthStore } from '../../store/authStore'
 
@@ -63,7 +63,7 @@ export default function TenantsPage() {
     <div className="max-w-7xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold text-[var(--fg)]">Tenants</h1>
-        <Button width={130} height={36} onClick={() => setShowCreateModal(true)}>
+        <Button size="default"  onClick={() => setShowCreateModal(true)}>
           Create Tenant
         </Button>
       </div>
@@ -78,7 +78,7 @@ export default function TenantsPage() {
         <Card>
           <CardContent className="text-center py-12">
             <p className="text-[var(--fg-muted)] mb-4">No tenants yet</p>
-            <Button width={150} height={36} onClick={() => setShowCreateModal(true)}>
+            <Button size="default"  onClick={() => setShowCreateModal(true)}>
               Create your first tenant
             </Button>
           </CardContent>
@@ -122,8 +122,7 @@ export default function TenantsPage() {
               <CardTitle>Members</CardTitle>
               {tenants?.find((t) => t.id === selectedTenant)?.owner_id === user?.id && (
                 <Button
-                  width={80}
-                  height={28}
+                  size="sm"
                   onClick={() => deleteMutation.mutate(selectedTenant)}
                   className="text-[var(--destructive)]"
                 >
@@ -142,8 +141,7 @@ export default function TenantsPage() {
                   </div>
                   {member.role !== 'owner' && (
                     <Button
-                      width={60}
-                      height={28}
+                      size="sm"
                       onClick={() => removeMemberMutation.mutate({ tenantId: selectedTenant, userId: member.user_id })}
                     >
                       Remove
@@ -156,31 +154,36 @@ export default function TenantsPage() {
         </Card>
       )}
 
-      <Modal open={showCreateModal} onClose={() => setShowCreateModal(false)} title="Create Tenant">
-        <div className="space-y-4">
-          <div>
-            <label className="text-xs text-[var(--fg-muted)] block mb-1">Tenant Name</label>
-            <Input
-              value={newTenantName}
-              onChange={(e) => setNewTenantName(e.target.value)}
-              placeholder="My Tenant"
-            />
+      <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Create Tenant</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-xs text-[var(--fg-muted)] block mb-1">Tenant Name</label>
+              <Input
+                value={newTenantName}
+                onChange={(e) => setNewTenantName(e.target.value)}
+                placeholder="My Tenant"
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button size="sm"  onClick={() => setShowCreateModal(false)}>
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+
+                onClick={() => createMutation.mutate(newTenantName)}
+                disabled={!newTenantName.trim() || createMutation.isPending}
+              >
+                {createMutation.isPending ? 'Creating...' : 'Create'}
+              </Button>
+            </div>
           </div>
-          <div className="flex justify-end gap-2">
-            <Button width={80} height={36} onClick={() => setShowCreateModal(false)}>
-              Cancel
-            </Button>
-            <Button
-              width={100}
-              height={36}
-              onClick={() => createMutation.mutate(newTenantName)}
-              disabled={!newTenantName.trim() || createMutation.isPending}
-            >
-              {createMutation.isPending ? 'Creating...' : 'Create'}
-            </Button>
-          </div>
-        </div>
-      </Modal>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

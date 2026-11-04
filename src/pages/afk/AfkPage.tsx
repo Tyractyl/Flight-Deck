@@ -93,7 +93,8 @@ export default function AfkPage() {
   const timerFormat = { minimumIntegerDigits: 2 }
 
   return (
-    <div className="flex-1 flex flex-col justify-center min-h-0 max-h-full gap-6 sm:gap-8 overflow-hidden">
+    <div className="flex-1 flex flex-col justify-center min-h-0 max-h-full overflow-hidden">
+      <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 sm:gap-8 sm:px-6">
       {/* Header */}
       <div className="space-y-1 text-center">
         <h1 className="text-2xl font-semibold text-[var(--fg)]">AFK Farm</h1>
@@ -119,7 +120,7 @@ export default function AfkPage() {
         </div>
 
         <div className="mt-6">
-          <Button variant={isAfk ? 'danger' : 'primary'} onClick={isAfk ? stopAfk : startAfk} width={160} height={36}>
+          <Button variant={isAfk ? 'destructive' : 'default'} onClick={isAfk ? stopAfk : startAfk}>
             {isAfk ? 'Stop Earning' : 'Start Earning'}
           </Button>
         </div>
@@ -128,7 +129,7 @@ export default function AfkPage() {
         <div className="flex items-center justify-center gap-2 mt-5">
           <span
             className={`inline-block h-2 w-2 rounded-full transition-colors ${
-              isAfk ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.6)]' : 'bg-red-500'
+              isAfk ? 'bg-emerald-500' : 'bg-red-500'
             }`}
           />
           <span className="text-sm font-medium text-[var(--fg)]">
@@ -166,6 +167,7 @@ export default function AfkPage() {
             {activeUsers} active farmer{activeUsers !== 1 ? 's' : ''}
           </p>
         </div>
+      </div>
       </div>
     </div>
   )

@@ -242,8 +242,8 @@ export function CrashScreen({ errors, error, errorInfo, badge, onOpenFrame }: Cr
             )}
 
             <div className="mt-6 flex flex-wrap items-center gap-3">
-              <Button onClick={handleRefresh} width={120} height={36}>Refresh page</Button>
-              <Button onClick={handleCopy} variant="secondary" width={140} height={36}>
+              <Button onClick={handleRefresh}>Refresh page</Button>
+              <Button onClick={handleCopy} variant="secondary">
                 {copied ? 'Copied!' : 'Copy debug info'}
               </Button>
             </div>

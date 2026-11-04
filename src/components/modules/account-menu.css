@@ -1,0 +1,375 @@
+/*
+ * Account menu styles — the full set from Marnell's modules.css, copied
+ * verbatim (not linked) so this repo is self-contained, with the Tyractyl
+ * additions (profile avatar, theme switcher, alignment variant) appended.
+ * Light values by default; dark values apply under `.dark`.
+ */
+
+/* ── Account menu ── */
+
+.am-root {
+  --am-menu-bg: #fdfdfd;
+  --am-menu-border: rgba(0, 0, 0, 0.1);
+  --am-menu-shadow: 0 20px 50px rgba(0, 0, 0, 0.16);
+  --am-panel-bg: #f2f2f2;
+  --am-text: #1f1f1f;
+  --am-text-muted: #737373;
+  --am-icon: #555;
+  --am-sep: #e4e4e4;
+  --am-sep-strong: #e0e0e0;
+  --am-key-bg: linear-gradient(180deg, #ececec, #e2e2e2);
+  --am-key-border: #d6d6d6;
+  --am-key-border-bottom: #c6c6c6;
+  --am-key-shadow: 0 1.5px 0 #d0d0d0, inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  --am-key-text: #555;
+  --am-key-text-shadow: none;
+  --am-hl: rgba(0, 0, 0, 0.055);
+  --am-hl-dark: #e6e6e6;
+  --am-hl-danger: #fbe9e9;
+  --am-danger-icon: #d5453c;
+  --am-badge-mix-base: #fff;
+  --am-sub-shadow: 0 20px 50px rgba(0, 0, 0, 0.16);
+  --am-chip-bg: #fff;
+  --am-chip-hover: #f4f4f4;
+
+  position: relative;
+  /* No margins: the surrounding pill/button row owns all outer spacing, so
+     the avatar centers exactly and the menu hangs a clean 10px below it. */
+  margin: 0;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  color: var(--am-text);
+  text-align: left;
+}
+.am-root button,
+.am-root kbd,
+.am-badge {
+  font-family: var(--dlg-mono-font, var(--font-mono, "JetBrains Mono", monospace));
+}
+.dark .am-root {
+  --am-menu-bg: #1b1b1b;
+  --am-menu-border: #2b2b2b;
+  --am-menu-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+  --am-panel-bg: #090909;
+  --am-text: #f2f2f2;
+  --am-text-muted: #8b8b8b;
+  --am-icon: #b5b5b5;
+  --am-sep: #252525;
+  --am-sep-strong: #2a2a2a;
+  --am-key-bg: linear-gradient(180deg, #323232, #232323);
+  --am-key-border: #3b3b3b;
+  --am-key-border-bottom: #1a1a1a;
+  --am-key-shadow: 0 1.5px 0 #050505, inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  --am-key-text: #b8b8b8;
+  --am-key-text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.5);
+  --am-hl: rgba(255, 255, 255, 0.07);
+  --am-hl-dark: #090909;
+  --am-hl-danger: #2b1618;
+  --am-danger-icon: #ff7a7a;
+  --am-badge-mix-base: #0a0a0a;
+  --am-sub-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+  --am-chip-bg: #232323;
+  --am-chip-hover: #2d2d2d;
+}
+.am-avatar {
+  /* Block so the button doesn't sit on a text baseline: inline buttons add a
+     descender gap that makes the wrapper taller than the avatar. */
+  display: block;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  overflow: hidden;
+  background: var(--av, var(--am-chip-bg));
+}
+/* Labeled account pill (dashboard-navbar style trigger). */
+.am-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 14px 5px 5px;
+  border-radius: 999px;
+  border: 1px solid var(--am-menu-border);
+  background: var(--am-chip-bg);
+  cursor: pointer;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--am-text);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+  transition: background 0.15s, border-color 0.15s;
+}
+.am-chip:hover { background: var(--am-chip-hover); }
+.am-chip svg { color: var(--am-text-muted); }
+.am-avatar-sm { width: 26px; height: 26px; border-radius: 8px; }
+.am-menu {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 50%;
+  margin-left: -145px;
+  width: 290px;
+  z-index: 40;
+  background: var(--am-menu-bg);
+  border: 1.5px solid var(--am-menu-border);
+  border-radius: 16px;
+  padding: 6px;
+  box-shadow: var(--am-menu-shadow);
+  opacity: 0;
+  visibility: hidden;
+  filter: blur(10px);
+  transform: perspective(900px) rotateX(-14deg) translateY(-8px) scale(0.96);
+  transform-origin: 50% 0;
+  transition: opacity 0.2s ease-out, filter 0.2s ease-out, transform 0.2s ease-out, visibility 0s 0.2s;
+}
+.am-menu[data-open="true"] {
+  opacity: 1;
+  visibility: visible;
+  filter: blur(0);
+  transform: none;
+  transition: opacity 0.3s ease-out, filter 0.35s ease-out, transform 0.5s cubic-bezier(0.22, 1, 0.36, 1), visibility 0s;
+}
+.am-menu > .am-panel > .am-header,
+.am-menu > .am-panel > .am-row,
+.am-menu > .am-bottom > .am-row {
+  opacity: 0;
+  transform: translateY(-8px);
+  filter: blur(4px);
+  transition: opacity 0.12s, transform 0.12s, filter 0.12s, color 0.15s;
+}
+.am-menu[data-open="true"] > .am-panel > .am-header,
+.am-menu[data-open="true"] > .am-panel > .am-row,
+.am-menu[data-open="true"] > .am-bottom > .am-row {
+  opacity: 1;
+  transform: none;
+  filter: blur(0);
+  transition:
+    opacity 0.4s ease-out calc(var(--i) * 30ms + 90ms),
+    transform 0.5s cubic-bezier(0.22, 1, 0.36, 1) calc(var(--i) * 30ms + 90ms),
+    filter 0.4s ease-out calc(var(--i) * 30ms + 90ms),
+    color 0.15s;
+}
+/* 16px menu corner minus the 7.5px inset (1.5px border + 6px padding) keeps
+   the panel corners concentric with the menu's. */
+.am-panel { background: var(--am-panel-bg); border-radius: 8.5px; padding: 0; }
+.am-header { display: flex; align-items: flex-start; gap: 13px; padding: 10px; }
+.am-mav { width: 38px; height: 38px; border-radius: 10px; overflow: hidden; flex: none; }
+.am-name { font-size: 15px; font-weight: 500; line-height: 18px; color: var(--am-text); margin-top: 1px; }
+.am-email { font-size: 13.5px; color: var(--am-text-muted); line-height: 18px; }
+.am-header .am-badge { margin-left: auto; }
+.am-row {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 32px;
+  margin: 0;
+  padding: 0 10px;
+  font-size: 14px;
+  color: var(--am-text);
+  cursor: pointer;
+  /* Rows sit flush against the panel and menu edges (both inset 7.5px under
+     the 16px menu corner), so 8.5px keeps every corner arc concentric. */
+  border-radius: 8.5px;
+}
+.am-bottom { padding: 2px 0 0; }
+.am-bottom .am-row { margin: 0; padding: 0 10px; }
+.am-row svg { flex: none; color: var(--am-icon); transition: color 0.15s; }
+.am-sp { flex: 1; }
+.am-row span { white-space: nowrap; }
+.am-row[data-d]:hover svg { color: var(--am-danger-icon); }
+.am-badge {
+  transition: color 0.25s, background 0.25s, width 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+  --c: #16a34a;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 6px;
+  color: var(--c);
+  background: color-mix(in srgb, var(--c) 16%, var(--am-badge-mix-base));
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.am-sep { height: 1px; background: var(--am-sep); margin: 4px 0; }
+.am-bottom .am-sep { background: var(--am-sep-strong); margin: 6px -5px; }
+.am-hl {
+  position: absolute;
+  z-index: 0;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  border-radius: 12px;
+  background: var(--am-hl);
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    top 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+    left 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+    width 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+    height 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+    border-radius 0.22s,
+    background 0.2s,
+    opacity 0.15s;
+}
+.am-hl.am-hl-dark { background: var(--am-hl-dark); }
+.am-hl.am-hl-danger { background: var(--am-hl-danger); }
+.am-keys { display: flex; gap: 2px; align-items: center; }
+.am-sub {
+  position: absolute;
+  top: 0;
+  z-index: 2;
+  background: var(--am-menu-bg);
+  border: 1.5px solid var(--am-menu-border);
+  border-radius: 16px;
+  padding: 5px;
+  box-shadow: var(--am-sub-shadow);
+  opacity: 0;
+  visibility: hidden;
+  filter: blur(8px);
+  transition: opacity 0.15s, filter 0.15s, transform 0.15s, visibility 0s 0.15s;
+}
+.am-sub[data-side="l"] { right: calc(100% + 8px); transform: translateX(10px) scale(0.97); transform-origin: 100% 50%; }
+.am-sub[data-side="r"] { left: calc(100% + 8px); transform: translateX(-10px) scale(0.97); transform-origin: 0 50%; }
+.am-sub::before { content: ""; position: absolute; top: 0; bottom: 0; width: 14px; }
+.am-sub[data-side="l"]::before { right: -14px; }
+.am-sub[data-side="r"]::before { left: -14px; }
+.am-sub[data-open="true"] {
+  opacity: 1;
+  visibility: visible;
+  filter: blur(0);
+  transform: none;
+  transition: opacity 0.25s ease-out, filter 0.25s ease-out, transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.am-sub-panel { background: var(--am-panel-bg); border-radius: 23px; padding: 5px 0; }
+.am-sub .am-hl { border-radius: 14px; }
+.am-sub-title { font-size: 13.5px; color: var(--am-text-muted); line-height: 24px; padding: 6px 13px 2px; }
+.am-sub .am-row { height: 36px; gap: 11px; }
+.am-sub.am-sub-compact .am-row { height: 32px; }
+.am-sub .am-sep { margin: 4px 0; }
+.am-statusdot { width: 8px; height: 8px; border-radius: 50%; flex: none; margin: 0 3px; }
+.am-sph { width: 22px; height: 22px; border-radius: 50%; flex: none; }
+.am-gt { background: radial-gradient(circle at 35% 28%, #c9f3e6, #7cc7b8 35%, #3f8f86 70%, #25605f); }
+.am-go { background: radial-gradient(circle at 35% 28%, #ffb08a, #f0653a 40%, #b8341a 85%); }
+.am-gb { background: radial-gradient(circle at 35% 28%, #b4c4ff, #5f7cf0 45%, #2c3da8); }
+.am-plus {
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  color: color-mix(in srgb, var(--am-text-muted) 62%, transparent);
+  flex: none;
+}
+.am-sph { background-image: linear-gradient(160deg, transparent 40%, rgba(255, 255, 255, 0.2) 48%, transparent 57%); }
+.am-tick { display: flex; }
+.am-tick svg { stroke-width: 2; animation: am-tkpop 0.38s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.am-tick svg path { stroke-dasharray: 1; stroke-dashoffset: 1; animation: am-tkd 0.32s 0.06s cubic-bezier(0.65, 0, 0.35, 1) forwards; }
+@keyframes am-tkpop {
+  from { transform: scale(0.5); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+@keyframes am-tkd { to { stroke-dashoffset: 0; } }
+.am-sub .am-tick svg { color: var(--am-text); }
+
+@media (prefers-reduced-motion: reduce) {
+  .mdl-overlay .mdl-shell {
+    animation-duration: 0.01s !important;
+    animation-delay: 0s !important;
+  }
+  .mdl-overlay,
+  .dak-ico,
+  .dak-chip {
+    transition-duration: 0.01s !important;
+  }
+}
+
+/* ── Tyractyl additions ── */
+.am-pfp {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.am-pfp.am-gen { display: block; }
+.am-pfp.am-gen > svg { display: block; }
+.am-theme {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  padding: 1.5px;
+  border-radius: 7px;
+  background: var(--am-hl);
+}
+.am-theme-pill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 0;
+  border-radius: 6px;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--fg) 18%, transparent),
+    color-mix(in srgb, var(--fg) 5%, transparent)
+  );
+  box-shadow: inset 0 0.5px 0 color-mix(in srgb, var(--fg) 10%, transparent);
+  transition: left 0.25s cubic-bezier(0.22, 1, 0.36, 1), width 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.am-theme-btn {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 6px;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  font: inherit;
+  font-size: 10.5px;
+  font-weight: 500;
+  color: var(--am-text-muted);
+  transition: background 0.15s, color 0.15s;
+}
+.am-theme-btn:hover { color: var(--am-text); }
+.am-theme-btn.am-theme-on {
+  color: var(--fg);
+}
+.am-align-end {
+  left: auto;
+  right: 0;
+  margin-left: 0;
+  transform-origin: 100% 0;
+}
+a.am-row { text-decoration: none; color: var(--am-text); }
+button.am-row {
+  background: none;
+  border: 0;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  appearance: none;
+  -webkit-appearance: none;
+  padding: 0 8px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .am-menu,
+  .am-sub,
+  .am-tick svg,
+  .am-hl,
+  .am-row {
+    transition-duration: 0.01s !important;
+    animation-duration: 0.01s !important;
+  }
+}

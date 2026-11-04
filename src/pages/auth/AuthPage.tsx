@@ -4,9 +4,12 @@ import { useAuthStore } from '../../store/authStore'
 import { login as apiLogin, register as apiRegister } from '../../api/auth'
 import api from '../../api/client'
 import { sileo } from 'sileo'
-import Button from '../../components/Button'
+import { ClassicButton as Button } from '../../components/Button'
 import InputError from '../../components/InputError'
 import Loader from '../../components/Loader'
+import { useSlidingCaret } from '../../hooks/useSlidingCaret'
+import { getPublicSettings } from '../../api/settings'
+import { useAuthState } from '../../context/AuthReadyContext'
 
 export default function AuthPage() {
   const navigate = useNavigate()
@@ -44,6 +47,25 @@ export default function AuthPage() {
   const [emailError, setEmailError] = useState('')
   const [passwordError, setPasswordError] = useState('')
   const [usernameError, setUsernameError] = useState('')
+
+  // Sliding caret refs for the styled inputs
+  const forgotEmailCaret = useSlidingCaret<HTMLDivElement>()
+  const loginEmailCaret = useSlidingCaret<HTMLDivElement>()
+  const loginPasswordCaret = useSlidingCaret<HTMLDivElement>()
+  const signupUsernameCaret = useSlidingCaret<HTMLDivElement>()
+  const signupEmailCaret = useSlidingCaret<HTMLDivElement>()
+  const signupPasswordCaret = useSlidingCaret<HTMLDivElement>()
+
+  // Whether Discord OAuth is configured on the server (from public settings)
+  const [discordEnabled, setDiscordEnabled] = useState(false)
+  useEffect(() => {
+    getPublicSettings()
+      .then((s) => setDiscordEnabled(!!s.discord_enabled))
+      .catch(() => {})
+  }, [])
+
+  // Plays the loading screen choreography when entering the app
+  const { beginEntry } = useAuthState()
 
   useEffect(() => {
     if (!emailError && !passwordError && !usernameError) return
@@ -83,28 +105,34 @@ export default function AuthPage() {
     setUsernameError('')
     
     let hasError = false
-    
+
+    // Trim before validating and submitting — stray spaces are invisible in
+    // the borderless inputs and would otherwise fail the email check.
+    const cleanEmail = email.trim()
+    const cleanUsername = username.trim()
+
     if (mode === 'signup') {
-      if (!username.trim()) { setUsernameError('Username required'); hasError = true }
-      else if (username.trim().length < 3) { setUsernameError('Minimum 3 characters'); hasError = true }
+      if (!cleanUsername) { setUsernameError('Username required'); hasError = true }
+      else if (cleanUsername.length < 3) { setUsernameError('Minimum 3 characters'); hasError = true }
     }
-    
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!email.trim()) { setEmailError('Email required'); hasError = true }
-    else if (!emailRegex.test(email)) { setEmailError('Must be a valid email (e.g. user@domain.com)'); hasError = true }
-    
+    if (!cleanEmail) { setEmailError('Email required'); hasError = true }
+    else if (!emailRegex.test(cleanEmail)) { setEmailError('Must be a valid email (e.g. user@domain.com)'); hasError = true }
+
     if (!password) { setPasswordError('Password required'); hasError = true }
     else if (password.length < 5) { setPasswordError('Minimum 5 characters'); hasError = true }
-    
+
     if (hasError) return
 
     setLoading(true)
-    
+
     try {
       const res = mode === 'login'
-        ? await apiLogin(email, password)
-        : await apiRegister(email, username, password)
+        ? await apiLogin(cleanEmail, password)
+        : await apiRegister(cleanEmail, cleanUsername, password)
       setAuth(res.user, res.access_token)
+      beginEntry()
       sileo.success({ title: 'Welcome to Tyractyl™', description: mode === 'login' ? 'Signed in successfully' : 'Your account has been created' })
       navigate('/')
     } catch (err: any) {
@@ -118,13 +146,14 @@ export default function AuthPage() {
   const handleForgotSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault()
     setEmailError('')
-    
+
+    const cleanEmail = email.trim()
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!email.trim()) { setEmailError('Email required'); return }
-    else if (!emailRegex.test(email)) { setEmailError('Must be a valid email (e.g. user@domain.com)'); return }
-    
+    if (!cleanEmail) { setEmailError('Email required'); return }
+    else if (!emailRegex.test(cleanEmail)) { setEmailError('Must be a valid email (e.g. user@domain.com)'); return }
+
     setLoading(true)
-    const forgotRequest = api.post('/auth/forgot-password', { email })
+    const forgotRequest = api.post('/auth/forgot-password', { email: cleanEmail })
     
     sileo.promise(forgotRequest, {
       loading: { title: 'Sending reset link...', description: 'Please wait a moment' },
@@ -220,12 +249,12 @@ export default function AuthPage() {
                 {!forgotSent ? (
                   <form noValidate onSubmit={handleForgotSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 15, position: 'relative' }}>
                     {/* Email Input */}
-                    <div className="auth-input-wrapper" style={{ position: 'relative', width: 178, height: 22, background: 'linear-gradient(180deg, #272727 0%, #232323 0.01%, #0a0a0a 100%)', borderRadius: 5 }}>
+                    <div className="auth-input-wrapper" ref={forgotEmailCaret} style={{ position: 'relative', width: 178, height: 22, background: 'linear-gradient(180deg, #272727 0%, #232323 0.01%, #0a0a0a 100%)', borderRadius: 5 }}>
                       <div style={{ position: 'absolute', top: -2, left: 15, width: 22, height: 8, background: '#000', borderBottomRightRadius: 3, borderBottomLeftRadius: 3 }} />
                       <div style={{ position: 'absolute', top: -1, left: 20, color: '#fff', fontSize: 5, fontFamily: 'var(--font-sans, ui-sans-serif, system-ui, sans-serif)', pointerEvents: 'none' }}>Email</div>
                       <svg style={{ position: 'absolute', top: -1, left: 12, width: 4, height: 4 }} viewBox="-1 -1 4 4" fill="none"><path d="M2 2V0H0C1.10457 0 2 0.89543 2 2Z" fill="black" /></svg>
                       <svg style={{ position: 'absolute', top: -1, left: 36, width: 4, height: 4 }} viewBox="-1 -1 4 4" fill="none"><path d="M2 0H0V2C0 0.89543 0.89543 0 2 0Z" fill="black" /></svg>
-                      <input tabIndex={mode === 'forgot-password' ? 0 : -1} type="email" value={email} onChange={(e) => { setEmail(e.target.value); setEmailError(''); }} style={{ position: 'absolute', top: 7, left: 0, width: '100%', height: 8, background: 'transparent', border: 'none', outline: 'none', color: '#fff', fontSize: 6, fontFamily: 'var(--font-sans, ui-sans-serif, system-ui, sans-serif)', padding: '0 15px', boxSizing: 'border-box', lineHeight: '8px' }} />
+                      <input tabIndex={mode === 'forgot-password' ? 0 : -1} type="text" inputMode="email" autoComplete="email" value={email} onChange={(e) => { setEmail(e.target.value); setEmailError(''); }} style={{ position: 'absolute', top: 7, left: 0, width: '100%', height: 8, background: 'transparent', border: 'none', outline: 'none', color: '#fff', fontSize: 6, fontFamily: 'var(--font-sans, ui-sans-serif, system-ui, sans-serif)', padding: '0 8px', boxSizing: 'border-box', lineHeight: '6px' }} />
                       <InputError message={emailError} />
                     </div>
                     {/* Divider Or */}
@@ -240,7 +269,7 @@ export default function AuthPage() {
                     </Button>
                     {/* Submit Button */}
                     <div style={{ display: 'flex', justifyContent: 'center', width: 178, marginTop: 30 }}>
-                      <Button tabIndex={mode === 'forgot-password' ? 0 : -1} type="submit" loading={loading} width={167} height={22}>Send Link</Button>
+                      <Button tabIndex={mode === 'forgot-password' ? 0 : -1} type="submit" loading={loading} width={178} height={22}>Send Link</Button>
                     </div>
                   </form>
                 ) : (
@@ -263,13 +292,20 @@ export default function AuthPage() {
                 <div style={{ color: '#4B4B4B', fontSize: 10, fontFamily: 'var(--font-sans, ui-sans-serif, system-ui, sans-serif)', fontWeight: 400, marginBottom: 25 }}>Hosting that doesn't feel ancient</div>
                 <form noValidate onSubmit={handleAuthSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 15, position: 'relative' }}>
                   {/* Discord Button */}
-                  <Button 
-                    variant="discord" 
-                    width={178} 
-                    height={22} 
+                  <Button
+                    variant="discord"
+                    width={178}
+                    height={22}
                     loading={discordLoading}
                     tabIndex={mode === 'login' ? 0 : -1}
-                    onClick={() => { setDiscordLoading(true); setTimeout(() => { window.location.href = '/api/auth/discord' }, 100) }}
+                    onClick={() => {
+                      if (!discordEnabled) {
+                        sileo.error({ title: 'Discord sign-in', description: 'Discord sign-in is not set up on this server yet.' })
+                        return
+                      }
+                      setDiscordLoading(true)
+                      setTimeout(() => { window.location.href = '/api/auth/discord' }, 100)
+                    }}
                   >
                     {discordLoading ? (
                       <Loader size={32} color="#ccc" />
@@ -294,21 +330,21 @@ export default function AuthPage() {
                     <div style={{ flex: 1, height: 1, background: '#212121', borderRadius: 5 }} />
                   </div>
                   {/* Email Input */}
-                  <div className="auth-input-wrapper" style={{ position: 'relative', width: 178, height: 22, background: 'linear-gradient(180deg, #272727 0%, #232323 0.01%, #0a0a0a 100%)', borderRadius: 5 }}>
+                  <div className="auth-input-wrapper" ref={loginEmailCaret} style={{ position: 'relative', width: 178, height: 22, background: 'linear-gradient(180deg, #272727 0%, #232323 0.01%, #0a0a0a 100%)', borderRadius: 5 }}>
                     <div style={{ position: 'absolute', top: -2, left: 15, width: 22, height: 8, background: '#000', borderBottomRightRadius: 3, borderBottomLeftRadius: 3 }} />
                     <div style={{ position: 'absolute', top: -1, left: 20, color: '#fff', fontSize: 5, fontFamily: 'var(--font-sans, ui-sans-serif, system-ui, sans-serif)', pointerEvents: 'none' }}>Email</div>
                     <svg style={{ position: 'absolute', top: -1, left: 12, width: 4, height: 4 }} viewBox="-1 -1 4 4" fill="none"><path d="M2 2V0H0C1.10457 0 2 0.89543 2 2Z" fill="black" /></svg>
                     <svg style={{ position: 'absolute', top: -1, left: 36, width: 4, height: 4 }} viewBox="-1 -1 4 4" fill="none"><path d="M2 0H0V2C0 0.89543 0.89543 0 2 0Z" fill="black" /></svg>
-                    <input tabIndex={mode === 'login' ? 0 : -1} type="email" value={email} onChange={(e) => { setEmail(e.target.value); setEmailError(''); }} style={{ position: 'absolute', top: 7, left: 0, width: '100%', height: 8, background: 'transparent', border: 'none', outline: 'none', color: '#fff', fontSize: 6, fontFamily: 'var(--font-sans, ui-sans-serif, system-ui, sans-serif)', padding: '0 15px', boxSizing: 'border-box', lineHeight: '8px' }} />
+                    <input tabIndex={mode === 'login' ? 0 : -1} type="text" inputMode="email" autoComplete="email" value={email} onChange={(e) => { setEmail(e.target.value); setEmailError(''); }} style={{ position: 'absolute', top: 7, left: 0, width: '100%', height: 8, background: 'transparent', border: 'none', outline: 'none', color: '#fff', fontSize: 6, fontFamily: 'var(--font-sans, ui-sans-serif, system-ui, sans-serif)', padding: '0 8px', boxSizing: 'border-box', lineHeight: '6px' }} />
                     <InputError message={emailError} />
                   </div>
                   {/* Password Input */}
-                  <div className="auth-input-wrapper" style={{ position: 'relative', width: 178, height: 22, background: 'linear-gradient(180deg, #272727 0%, #232323 0.01%, #0a0a0a 100%)', borderRadius: 5 }}>
+                  <div className="auth-input-wrapper" ref={loginPasswordCaret} style={{ position: 'relative', width: 178, height: 22, background: 'linear-gradient(180deg, #272727 0%, #232323 0.01%, #0a0a0a 100%)', borderRadius: 5 }}>
                     <div style={{ position: 'absolute', top: -2, left: 15, width: 31, height: 8, background: '#000', borderBottomRightRadius: 3, borderBottomLeftRadius: 3 }} />
                     <div style={{ position: 'absolute', top: -1, left: 20, color: '#fff', fontSize: 5, fontFamily: 'var(--font-sans, ui-sans-serif, system-ui, sans-serif)', pointerEvents: 'none' }}>Password</div>
                     <svg style={{ position: 'absolute', top: -1, left: 12, width: 4, height: 4 }} viewBox="-1 -1 4 4" fill="none"><path d="M2 2V0H0C1.10457 0 2 0.89543 2 2Z" fill="black" /></svg>
                     <svg style={{ position: 'absolute', top: -1, left: 45, width: 4, height: 4 }} viewBox="-1 -1 4 4" fill="none"><path d="M2 0H0V2C0 0.89543 0.89543 0 2 0Z" fill="black" /></svg>
-                    <input tabIndex={mode === 'login' ? 0 : -1} type="password" value={password} onChange={(e) => { setPassword(e.target.value); setPasswordError(''); }} style={{ position: 'absolute', top: 7, left: 0, width: '100%', height: 8, background: 'transparent', border: 'none', outline: 'none', color: '#fff', fontSize: 6, fontFamily: 'var(--font-sans, ui-sans-serif, system-ui, sans-serif)', padding: '0 15px', boxSizing: 'border-box', lineHeight: '8px' }} />
+                    <input tabIndex={mode === 'login' ? 0 : -1} type="password" value={password} onChange={(e) => { setPassword(e.target.value); setPasswordError(''); }} style={{ position: 'absolute', top: 7, left: 0, width: '100%', height: 8, background: 'transparent', border: 'none', outline: 'none', color: '#fff', fontSize: 6, fontFamily: 'var(--font-sans, ui-sans-serif, system-ui, sans-serif)', padding: '0 8px', boxSizing: 'border-box', lineHeight: '6px' }} />
                     <InputError message={passwordError} />
                   </div>
                   {/* Links */}
@@ -321,7 +357,7 @@ export default function AuthPage() {
                   </div>
                   {/* Submit Button */}
                   <div style={{ display: 'flex', justifyContent: 'center', width: 178, marginTop: 25 }}>
-                    <Button tabIndex={mode === 'login' ? 0 : -1} type="submit" loading={loading} width={167} height={23}>Sign In</Button>
+                    <Button tabIndex={mode === 'login' ? 0 : -1} type="submit" loading={loading} width={178} height={23}>Sign In</Button>
                   </div>
                 </form>
               </div>
@@ -334,30 +370,30 @@ export default function AuthPage() {
                 <div style={{ color: '#4B4B4B', fontSize: 10, fontFamily: 'var(--font-sans, ui-sans-serif, system-ui, sans-serif)', fontWeight: 400, marginBottom: 25 }}>Hosting that doesn't feel ancient</div>
                 <form noValidate onSubmit={handleAuthSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 15, position: 'relative' }}>
                   {/* Username Input */}
-                  <div className="auth-input-wrapper" style={{ position: 'relative', width: 178, height: 22, background: 'linear-gradient(180deg, #272727 0%, #232323 0.01%, #0a0a0a 100%)', borderRadius: 5 }}>
+                  <div className="auth-input-wrapper" ref={signupUsernameCaret} style={{ position: 'relative', width: 178, height: 22, background: 'linear-gradient(180deg, #272727 0%, #232323 0.01%, #0a0a0a 100%)', borderRadius: 5 }}>
                     <div style={{ position: 'absolute', top: -2, left: 15, width: 33, height: 8, background: '#000', borderBottomRightRadius: 3, borderBottomLeftRadius: 3 }} />
                     <div style={{ position: 'absolute', top: -1, left: 20, color: '#fff', fontSize: 5, fontFamily: 'var(--font-sans, ui-sans-serif, system-ui, sans-serif)', pointerEvents: 'none' }}>Username</div>
                     <svg style={{ position: 'absolute', top: -1, left: 12, width: 4, height: 4 }} viewBox="-1 -1 4 4" fill="none"><path d="M2 2V0H0C1.10457 0 2 0.89543 2 2Z" fill="black" /></svg>
                     <svg style={{ position: 'absolute', top: -1, left: 47, width: 4, height: 4 }} viewBox="-1 -1 4 4" fill="none"><path d="M2 0H0V2C0 0.89543 0.89543 0 2 0Z" fill="black" /></svg>
-                    <input tabIndex={mode === 'signup' ? 0 : -1} type="text" value={username} onChange={(e) => { setUsername(e.target.value); setUsernameError(''); }} style={{ position: 'absolute', top: 7, left: 0, width: '100%', height: 8, background: 'transparent', border: 'none', outline: 'none', color: '#fff', fontSize: 6, fontFamily: 'var(--font-sans, ui-sans-serif, system-ui, sans-serif)', padding: '0 15px', boxSizing: 'border-box', lineHeight: '8px' }} />
+                    <input tabIndex={mode === 'signup' ? 0 : -1} type="text" value={username} onChange={(e) => { setUsername(e.target.value); setUsernameError(''); }} style={{ position: 'absolute', top: 7, left: 0, width: '100%', height: 8, background: 'transparent', border: 'none', outline: 'none', color: '#fff', fontSize: 6, fontFamily: 'var(--font-sans, ui-sans-serif, system-ui, sans-serif)', padding: '0 8px', boxSizing: 'border-box', lineHeight: '6px' }} />
                     <InputError message={usernameError} />
                   </div>
                   {/* Email Input */}
-                  <div className="auth-input-wrapper" style={{ position: 'relative', width: 178, height: 22, background: 'linear-gradient(180deg, #272727 0%, #232323 0.01%, #0a0a0a 100%)', borderRadius: 5 }}>
+                  <div className="auth-input-wrapper" ref={signupEmailCaret} style={{ position: 'relative', width: 178, height: 22, background: 'linear-gradient(180deg, #272727 0%, #232323 0.01%, #0a0a0a 100%)', borderRadius: 5 }}>
                     <div style={{ position: 'absolute', top: -2, left: 15, width: 22, height: 8, background: '#000', borderBottomRightRadius: 3, borderBottomLeftRadius: 3 }} />
                     <div style={{ position: 'absolute', top: -1, left: 20, color: '#fff', fontSize: 5, fontFamily: 'var(--font-sans, ui-sans-serif, system-ui, sans-serif)', pointerEvents: 'none' }}>Email</div>
                     <svg style={{ position: 'absolute', top: -1, left: 12, width: 4, height: 4 }} viewBox="-1 -1 4 4" fill="none"><path d="M2 2V0H0C1.10457 0 2 0.89543 2 2Z" fill="black" /></svg>
                     <svg style={{ position: 'absolute', top: -1, left: 36, width: 4, height: 4 }} viewBox="-1 -1 4 4" fill="none"><path d="M2 0H0V2C0 0.89543 0.89543 0 2 0Z" fill="black" /></svg>
-                    <input tabIndex={mode === 'signup' ? 0 : -1} type="email" value={email} onChange={(e) => { setEmail(e.target.value); setEmailError(''); }} style={{ position: 'absolute', top: 7, left: 0, width: '100%', height: 8, background: 'transparent', border: 'none', outline: 'none', color: '#fff', fontSize: 6, fontFamily: 'var(--font-sans, ui-sans-serif, system-ui, sans-serif)', padding: '0 15px', boxSizing: 'border-box', lineHeight: '8px' }} />
+                    <input tabIndex={mode === 'signup' ? 0 : -1} type="text" inputMode="email" autoComplete="email" value={email} onChange={(e) => { setEmail(e.target.value); setEmailError(''); }} style={{ position: 'absolute', top: 7, left: 0, width: '100%', height: 8, background: 'transparent', border: 'none', outline: 'none', color: '#fff', fontSize: 6, fontFamily: 'var(--font-sans, ui-sans-serif, system-ui, sans-serif)', padding: '0 8px', boxSizing: 'border-box', lineHeight: '6px' }} />
                     <InputError message={emailError} />
                   </div>
                   {/* Password Input */}
-                  <div className="auth-input-wrapper" style={{ position: 'relative', width: 178, height: 22, background: 'linear-gradient(180deg, #272727 0%, #232323 0.01%, #0a0a0a 100%)', borderRadius: 5 }}>
+                  <div className="auth-input-wrapper" ref={signupPasswordCaret} style={{ position: 'relative', width: 178, height: 22, background: 'linear-gradient(180deg, #272727 0%, #232323 0.01%, #0a0a0a 100%)', borderRadius: 5 }}>
                     <div style={{ position: 'absolute', top: -2, left: 15, width: 31, height: 8, background: '#000', borderBottomRightRadius: 3, borderBottomLeftRadius: 3 }} />
                     <div style={{ position: 'absolute', top: -1, left: 20, color: '#fff', fontSize: 5, fontFamily: 'var(--font-sans, ui-sans-serif, system-ui, sans-serif)', pointerEvents: 'none' }}>Password</div>
                     <svg style={{ position: 'absolute', top: -1, left: 12, width: 4, height: 4 }} viewBox="-1 -1 4 4" fill="none"><path d="M2 2V0H0C1.10457 0 2 0.89543 2 2Z" fill="black" /></svg>
                     <svg style={{ position: 'absolute', top: -1, left: 45, width: 4, height: 4 }} viewBox="-1 -1 4 4" fill="none"><path d="M2 0H0V2C0 0.89543 0.89543 0 2 0Z" fill="black" /></svg>
-                    <input tabIndex={mode === 'signup' ? 0 : -1} type="password" value={password} onChange={(e) => { setPassword(e.target.value); setPasswordError(''); }} style={{ position: 'absolute', top: 7, left: 0, width: '100%', height: 8, background: 'transparent', border: 'none', outline: 'none', color: '#fff', fontSize: 6, fontFamily: 'var(--font-sans, ui-sans-serif, system-ui, sans-serif)', padding: '0 15px', boxSizing: 'border-box', lineHeight: '8px' }} />
+                    <input tabIndex={mode === 'signup' ? 0 : -1} type="password" value={password} onChange={(e) => { setPassword(e.target.value); setPasswordError(''); }} style={{ position: 'absolute', top: 7, left: 0, width: '100%', height: 8, background: 'transparent', border: 'none', outline: 'none', color: '#fff', fontSize: 6, fontFamily: 'var(--font-sans, ui-sans-serif, system-ui, sans-serif)', padding: '0 8px', boxSizing: 'border-box', lineHeight: '6px' }} />
                     <InputError message={passwordError} />
                   </div>
                   {/* Links */}
@@ -369,7 +405,7 @@ export default function AuthPage() {
                   </div>
                   {/* Submit Button */}
                   <div style={{ display: 'flex', justifyContent: 'center', width: 178, marginTop: 25 }}>
-                    <Button tabIndex={mode === 'signup' ? 0 : -1} type="submit" loading={loading} width={167} height={23}>Sign Up</Button>
+                    <Button tabIndex={mode === 'signup' ? 0 : -1} type="submit" loading={loading} width={178} height={23}>Sign Up</Button>
                   </div>
                 </form>
               </div>

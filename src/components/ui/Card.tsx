@@ -14,7 +14,7 @@ function Card({ className, children, ...props }: React.ComponentProps<"div">) {
     >
       <div
         data-slot="card-inner"
-        className="flex flex-1 flex-col rounded-md border border-[var(--border-strong)] bg-[var(--bg-card)] py-6 text-[var(--fg)] shadow-sm"
+        className="flex flex-1 flex-col rounded-md border border-[color-mix(in_srgb,var(--fg)_5%,transparent)] bg-[var(--bg-card)] py-6 text-[var(--fg)] shadow-sm"
       >
         {children}
       </div>

@@ -73,7 +73,7 @@ export function CoinTransferModal({ open, onClose }: CoinTransferModalProps) {
             <button
               onClick={() => setShowConfirm(true)}
               disabled={!username || !amount || parseInt(amount) <= 0}
-              className="px-4 py-2 rounded-[8px] bg-blue-600/20 text-blue-400 font-sans text-sm hover:bg-blue-600/30 transition-colors disabled:opacity-50"
+              className="px-4 py-2 rounded-[8px] bg-[var(--fg)]/10 text-[var(--fg)] font-sans text-sm hover:bg-[var(--fg)]/15 transition-colors disabled:opacity-50"
             >
               Transfer
             </button>

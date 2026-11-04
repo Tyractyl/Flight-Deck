@@ -6,6 +6,7 @@ export interface BrandingSettings {
   show_status_card: boolean
   announcement_enabled: boolean
   announcement_text: string
+  discord_enabled?: boolean
 }
 
 export async function getPublicSettings() {

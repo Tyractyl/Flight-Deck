@@ -44,7 +44,6 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
-      '@workspace/ui': path.resolve(__dirname, './node_modules/parthenon-ui/src'),
     },
   },
   server: {
@@ -53,6 +52,8 @@ export default defineConfig({
       '/api': {
         target: 'http://localhost:16000',
         changeOrigin: true,
+        // WebSocket upgrades (console/stats proxies) must proxy too.
+        ws: true,
       },
       '/uploads': {
         target: 'http://localhost:16000',

@@ -4,7 +4,7 @@ import { queryKeys } from '../../api/queryKeys'
 import { adminListNodes, adminDeleteNode, adminCreateNode, adminUpdateNode, adminEnrollNode } from '../../api/admin'
 import { sileo } from 'sileo'
 import { HugeiconsIcon } from '@hugeicons/react'
-import { CpuIcon, DeleteIcon, PencilEdit01Icon, GpuIcon, CloudServerIcon } from '@hugeicons/core-free-icons'
+import { CpuIcon, DeleteIcon, PencilEdit01Icon } from '@hugeicons/core-free-icons'
 import Button from '../../components/Button'
 import { AdminLayout } from '../../components/admin/AdminLayout'
 import { DataTable } from '../../components/DataTable'
@@ -67,8 +67,8 @@ function CreateNodeDialog({ open, onClose }: { open: boolean; onClose: () => voi
                 <code className="flex-1 px-3 py-2 rounded-lg bg-muted text-xs font-mono select-all break-all">
                   {createdNode.token}
                 </code>
-                <Button width={70} height={34} onClick={() => {
-                  navigator.clipboard.writeText(createdNode.token)
+                <Button size="sm" onClick={() => {
+                  navigator.clipboard.writeText(createdNode.token ?? '')
                   setCopied(true)
                   setTimeout(() => setCopied(false), 2000)
                 }}>
@@ -78,7 +78,7 @@ function CreateNodeDialog({ open, onClose }: { open: boolean; onClose: () => voi
             </div>
           </div>
           <DialogFooter>
-            <Button variant="primary" width={80} height={34} onClick={onClose}>Done</Button>
+            <Button variant="default" size="sm" onClick={onClose}>Done</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -90,7 +90,7 @@ function CreateNodeDialog({ open, onClose }: { open: boolean; onClose: () => voi
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Create Node</DialogTitle>
-          <DialogDescription>Register a new Talon daemon node.</DialogDescription>
+          <DialogDescription>Register a new Talon node.</DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
@@ -135,11 +135,10 @@ function CreateNodeDialog({ open, onClose }: { open: boolean; onClose: () => voi
           </div>
         </div>
         <DialogFooter>
-          <Button variant="secondary" width={80} height={34} onClick={onClose}>Cancel</Button>
+          <Button variant="secondary" size="sm" onClick={onClose}>Cancel</Button>
           <Button
-            variant="primary"
-            width={120}
-            height={34}
+            variant="default"
+            size="sm"
             onClick={() => createMutation.mutate()}
             disabled={!name || !fqdn || createMutation.isPending}
             loading={createMutation.isPending}
@@ -222,7 +221,7 @@ function NodeDetailDialog({ node, open, onClose }: { node: Node; open: boolean; 
           <label className="text-xs font-medium text-muted-foreground">Config Token</label>
           <div className="mt-1.5 flex items-center gap-2">
             <code className="flex-1 px-3 py-2 rounded-lg bg-muted text-xs font-mono select-all break-all">{node.token}</code>
-            <Button width={70} height={34} onClick={() => { navigator.clipboard.writeText(node.token); setCopied(true); setTimeout(() => setCopied(false), 2000) }}>
+            <Button size="sm" onClick={() => { navigator.clipboard.writeText(node.token ?? ''); setCopied(true); setTimeout(() => setCopied(false), 2000) }}>
               {copied ? 'Copied' : 'Copy'}
             </Button>
           </div>
@@ -276,9 +275,8 @@ function NodeDetailDialog({ node, open, onClose }: { node: Node; open: boolean; 
           <div className="flex gap-2">
             {!node.is_online && (
               <Button
-                variant="primary"
-                width={110}
-                height={34}
+                variant="default"
+                size="sm"
                 loading={enrolling}
                 onClick={async () => {
                   setEnrolling(true)
@@ -294,9 +292,8 @@ function NodeDetailDialog({ node, open, onClose }: { node: Node; open: boolean; 
               </Button>
             )}
             <Button
-              variant="danger"
-              width={100}
-              height={34}
+              variant="destructive"
+              size="sm"
               onClick={() => {
                 if (confirm(`Delete "${node.name}"?`)) deleteMutation.mutate()
               }}
@@ -305,8 +302,7 @@ function NodeDetailDialog({ node, open, onClose }: { node: Node; open: boolean; 
             </Button>
           </div>
           <Button
-            width={100}
-            height={34}
+            size="sm"
             onClick={() => { setSaving(true); updateMutation.mutate(); setTimeout(() => setSaving(false), 600) }}
             loading={saving}
           >
@@ -378,9 +374,9 @@ export default function AdminNodesPage() {
   return (
     <AdminLayout
       title="Nodes"
-      description="Manage daemon nodes and their resources."
+      description="Manage Talon nodes and their resources."
       actions={
-        <Button variant="primary" width={130} height={34} onClick={() => setShowCreateModal(true)}>
+        <Button variant="default" size="sm" onClick={() => setShowCreateModal(true)}>
           Create Node
         </Button>
       }

@@ -7,17 +7,21 @@ import { queryKeys } from '../../api/queryKeys'
 import api from '../../api/client'
 import { useBrandingStore } from '../../store/brandingStore'
 import { listNodeStatus, getUptime, type UptimePoint } from '../../api/nodes'
-import { Skeleton } from 'parthenon-ui/components'
+import { Skeleton } from '@/components/ui/Skeleton'
 import { useAuthStore } from '../../store/authStore'
+import { useCreateServerDialog } from '../../store/createServerStore'
 import { sileo } from 'sileo'
+import { Play, Square, RotateCw } from 'lucide-react'
 import Button from '../../components/Button'
 
 import { DataTable } from '../../components/DataTable'
+import Avatar from 'boring-avatars';
 import { ResourceStats } from '../../components/dashboard/ResourceStats'
 import { formatMemory } from '../../utils/formatMemory'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/Card'
 
 const MEMBER_COLORS = ['bg-yellow-500', 'bg-blue-500', 'bg-green-500', 'bg-purple-500']
+const AVATAR_COLORS = ['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981']
 const MEMBER_TEXT_COLORS = ['text-yellow-800', 'text-blue-800', 'text-green-800', 'text-purple-800']
 const PLACEHOLDER_COLOR = 'bg-neutral-400 dark:bg-neutral-600'
 
@@ -78,7 +82,7 @@ function StatusAndAnnouncements({ nodes, health }: { nodes: NodeStatus[]; health
 
   if (!settings.show_status_card && settings.announcement_enabled && settings.announcement_text) {
     return (
-      <div className="rounded-lg border border-[var(--border-strong)] bg-[var(--bg-elevated)]/50 p-3">
+      <div className="rounded-lg border border-[color-mix(in_srgb,var(--fg)_5%,transparent)] bg-[var(--bg-elevated)]/50 p-3">
         <p className="text-xs font-medium text-[var(--fg)] mb-1">Announcement</p>
         <p className="text-xs text-[var(--fg-muted)] whitespace-pre-wrap">{settings.announcement_text}</p>
       </div>
@@ -129,6 +133,7 @@ function StatusAndAnnouncements({ nodes, health }: { nodes: NodeStatus[]; health
 
 export default function DashboardPage() {
   const navigate = useNavigate()
+  const openDialog = useCreateServerDialog((s) => s.openDialog)
   const queryClient = useQueryClient()
   const user = useAuthStore((s) => s.user)
 
@@ -239,8 +244,7 @@ export default function DashboardPage() {
                     {visibleMembers.map((member, index) => {
                       const colorClass = MEMBER_COLORS[index % MEMBER_COLORS.length]
                       const textColorClass = MEMBER_TEXT_COLORS[index % MEMBER_TEXT_COLORS.length]
-                      const initial = member.username?.charAt(0).toUpperCase() || member.email?.charAt(0).toUpperCase() || 'U'
-                      return (
+                                            return (
                         <div
                           key={member.user_id}
                           className={`flex h-10 w-10 items-center justify-center rounded-lg border-2 border-[var(--card)] text-xs font-medium uppercase shadow-sm overflow-hidden ${colorClass} ${textColorClass}`}
@@ -249,7 +253,7 @@ export default function DashboardPage() {
                           {member.avatar_url ? (
                             <img src={member.avatar_url} alt="" className="w-full h-full object-cover" />
                           ) : (
-                            <span className="relative z-10">{initial}</span>
+                            <Avatar size={40} name={member.username || member.email || 'user'} variant="beam" colors={AVATAR_COLORS} square />
                           )}
                         </div>
                       )
@@ -285,7 +289,7 @@ export default function DashboardPage() {
               {serverList.length} server{serverList.length !== 1 ? 's' : ''} total
             </p>
           </div>
-          <Button width={130} height={32} onClick={() => navigate('/servers/new')}>
+          <Button size="default"  onClick={() => openDialog()}>
             + New Server
           </Button>
         </div>
@@ -347,34 +351,28 @@ export default function DashboardPage() {
                             <button
                               type="button"
                               onClick={() => stopMutation.mutate(server.id)}
-                              className="inline-flex items-center justify-center p-1 text-[var(--fg-muted)] hover:text-[var(--fg)] transition-colors"
+                              className="inline-flex items-center justify-center p-1 rounded-md text-[var(--fg-muted)] hover:text-[var(--fg)] transition-colors"
                               title="Stop"
                             >
-                              <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
-                                <rect x="6" y="6" width="12" height="12" rx="2" />
-                              </svg>
+                              <Square size={18} fill="currentColor" />
                             </button>
                             <button
                               type="button"
                               onClick={() => restartMutation.mutate(server.id)}
-                              className="inline-flex items-center justify-center p-1 text-[var(--fg-muted)] hover:text-[var(--fg)] transition-colors"
+                              className="inline-flex items-center justify-center p-1 rounded-md text-[var(--fg-muted)] hover:text-[var(--fg)] transition-colors"
                               title="Restart"
                             >
-                              <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
-                                <path d="M17.65 6.35A7.95 7.95 0 0012 4a8 8 0 00-8 8 8 8 0 008 8 8 8 0 006.06-2.79l-1.56-1.34A6.02 6.02 0 0112 18a6 6 0 01-6-6 6 6 0 016-6 5.96 5.96 0 014.95 2.55L13 11h7V4l-2.35 2.35z" />
-                              </svg>
+                              <RotateCw size={18} />
                             </button>
                           </>
                         ) : (
                           <button
                             type="button"
                             onClick={() => startMutation.mutate(server.id)}
-                            className="inline-flex items-center justify-center p-1 text-[var(--fg-muted)] hover:text-[var(--fg)] transition-colors"
+                            className="inline-flex items-center justify-center p-1 rounded-md text-[var(--fg-muted)] hover:text-[var(--fg)] transition-colors"
                             title="Start"
                           >
-                            <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
-                              <path d="M8 5v14l11-7z" />
-                            </svg>
+                            <Play size={18} fill="currentColor" />
                           </button>
                         )}
                       </div>

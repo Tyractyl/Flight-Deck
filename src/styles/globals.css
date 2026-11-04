@@ -7,6 +7,14 @@
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
   --color-muted-foreground: var(--muted-foreground);
+  --color-sidebar: var(--sidebar-background);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
 }
 
 @layer base {
@@ -36,8 +44,8 @@
   }
 
   ::selection {
-    background-color: var(--accent);
-    color: var(--accent-foreground);
+    background-color: var(--fg);
+    color: var(--bg);
   }
 
   body {
@@ -56,18 +64,39 @@
     outline: none;
   }
 
-  input:not([type='checkbox']):not([type='radio']),
-  select,
-  textarea {
-    border: 1px solid var(--border-strong);
-  }
-
   /* Override Tailwind v4's default border-color with our theme border */
   *,
   *::before,
   *::after {
     border-color: var(--border);
   }
+
+  /* Number fields get their own steppers — hide the native ones */
+  input[type='number']::-webkit-inner-spin-button,
+  input[type='number']::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  input[type='number'] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+  }
+}
+
+/* Smooth cross-fade when the user switches theme. The theme store toggles this
+   class on <html> for ~340ms so normal hover transitions stay unaffected. */
+html.theme-transition,
+html.theme-transition *,
+html.theme-transition *::before,
+html.theme-transition *::after {
+  transition:
+    background-color 0.28s ease,
+    color 0.28s ease,
+    border-color 0.28s ease,
+    fill 0.28s ease,
+    stroke 0.28s ease,
+    box-shadow 0.28s ease !important;
 }
 
 .auth-input-wrapper::after {
@@ -137,6 +166,17 @@
   }
 }
 
+@keyframes dropdownOut {
+  0% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.95) translateY(-4px);
+  }
+}
+
 @keyframes shimmer {
   0% {
     transform: translateX(-100%);
@@ -196,6 +236,17 @@
   );
 }
 
+@keyframes gauge-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.7) rotate(-8deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+}
+
 @keyframes dropdown-shrink {
   0% {
     opacity: 1;
@@ -242,11 +293,38 @@
 
 :root {
   --animate-spin: spin 1s linear infinite;
+  /* Crisper corner scale than the imported default. */
+  --radius: 0.625rem;
+}
+
+/* Dark theme (default) — app tokens + shadcn tokens kept in sync */
+.dark, :root {
+  /* App tokens */
+  --bg: #000000;
+  --bg-card: #0d0d0d;
+  --bg-card-hover: #161616;
+  --bg-input: #1a1a1a;
+  --bg-elevated: #141414;
+  --fg: #ffffff;
+  --fg-secondary: #b1b2ae;
+  --fg-muted: #888888;
+  --fg-faint: #555555;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.15);
+  --accent: #262626;
+  --accent-foreground: #ffffff;
+  --destructive: #ff4444;
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --surface: #111111;
+  --surface-hover: #1a1a1a;
+
+  /* shadcn tokens */
   --background: #0a0a0a;
   --foreground: #fafafa;
-  --card: #0a0a0a;
+  --card: #111111;
   --card-foreground: #fafafa;
-  --popover: #0a0a0a;
+  --popover: #1a1a1a;
   --popover-foreground: #fafafa;
   --primary: #fafafa;
   --primary-foreground: #171717;
@@ -254,39 +332,14 @@
   --secondary-foreground: #fafafa;
   --muted: #262626;
   --muted-foreground: #a3a3a3;
-  --accent: #262626;
-  --accent-foreground: #fafafa;
-  --destructive: #ef4444;
   --destructive-foreground: #fafafa;
-  --border: #262626;
-  --input: #262626;
+  --input: rgba(255, 255, 255, 0.07);
   --ring: #525252;
-}
-
-/* Dark theme (default) */
-.dark, :root {
-  --bg: #000000;
-  --bg-card: #111111;
-  --bg-card-hover: #1a1a1a;
-  --bg-input: #1a1a1a;
-  --bg-elevated: #1e1e1e;
-  --fg: #ffffff;
-  --fg-secondary: #b1b2ae;
-  --fg-muted: #888888;
-  --fg-faint: #555555;
-  --border: rgba(255, 255, 255, 0.08);
-  --border-strong: rgba(255, 255, 255, 0.15);
-  --accent: #3b82f6;
-  --accent-foreground: #fff;
-  --destructive: #ff4444;
-  --success: #22c55e;
-  --warning: #f59e0b;
-  --surface: #111111;
-  --surface-hover: #1a1a1a;
 }
 
 /* Light theme */
 .light {
+  /* App tokens */
   --bg: #f4f4f5;
   --bg-card: #ffffff;
   --bg-card-hover: #fafafa;
@@ -298,23 +351,69 @@
   --fg-faint: #a1a1aa;
   --border: rgba(0, 0, 0, 0.08);
   --border-strong: rgba(0, 0, 0, 0.15);
-  --accent: #3b82f6;
-  --accent-foreground: #fff;
+  --accent: #f4f4f5;
+  --accent-foreground: #18181b;
   --destructive: #ef4444;
   --success: #22c55e;
   --warning: #f59e0b;
   --surface: #ffffff;
   --surface-hover: #f4f4f5;
+
+  /* shadcn tokens */
+  --background: #f4f4f5;
+  --foreground: #09090b;
+  --card: #ffffff;
+  --card-foreground: #09090b;
+  --popover: #ffffff;
+  --popover-foreground: #09090b;
+  --primary: #18181b;
+  --primary-foreground: #fafafa;
+  --secondary: #f4f4f5;
+  --secondary-foreground: #18181b;
+  --muted: #f4f4f5;
+  --muted-foreground: #71717a;
+  --destructive-foreground: #fafafa;
+  --input: rgba(0, 0, 0, 0.07);
+  --ring: #a1a1aa;
 }
 
-/* Force theme border override */
+/* Sidebar color tokens */
 :root,
 .dark {
-  --border: rgba(255, 255, 255, 0.08);
-  --border-strong: rgba(255, 255, 255, 0.15);
+  --sidebar-background: #0a0a0a;
+  --sidebar-foreground: #fafafa;
+  --sidebar-primary: #fafafa;
+  --sidebar-primary-foreground: #171717;
+  --sidebar-accent: #1e1e1e;
+  --sidebar-accent-foreground: #fafafa;
+  --sidebar-border: rgba(255, 255, 255, 0.08);
+  --sidebar-ring: #525252;
 }
 
 .light {
-  --border: rgba(0, 0, 0, 0.08);
-  --border-strong: rgba(0, 0, 0, 0.15);
+  --sidebar-background: #ffffff;
+  --sidebar-foreground: #09090b;
+  --sidebar-primary: #09090b;
+  --sidebar-primary-foreground: #fafafa;
+  --sidebar-accent: #f4f4f5;
+  --sidebar-accent-foreground: #09090b;
+  --sidebar-border: rgba(0, 0, 0, 0.08);
+  --sidebar-ring: #a1a1aa;
 }
+
+/* Sidebar slide-in animations */
+@keyframes slide-in-right {
+  from { opacity: 0; transform: translateX(-8px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes slide-in-left {
+  from { opacity: 0; transform: translateX(8px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+.animate-slide-in-right {
+  animation: slide-in-right 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.animate-slide-in-left {
+  animation: slide-in-left 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+

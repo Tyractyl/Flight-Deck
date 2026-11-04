@@ -69,17 +69,15 @@ function ServerDetailDialog({ server, open, onClose }: { server: Server; open: b
         <DialogFooter>
           <Button
             variant="secondary"
-            width={100}
-            height={34}
+            size="sm"
             onClick={() => killMutation.mutate()}
             loading={killMutation.isPending}
           >
             Kill
           </Button>
           <Button
-            variant="danger"
-            width={120}
-            height={34}
+            variant="destructive"
+            size="sm"
             onClick={() => {
               if (confirm(`Delete server "${server.name}"? This cannot be undone.`)) {
                 deleteMutation.mutate()

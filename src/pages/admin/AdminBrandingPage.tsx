@@ -69,7 +69,7 @@ export default function AdminBrandingPage() {
     <AdminLayout title="Branding" description="Customize the panel appearance.">
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(260px,360px)] max-w-5xl">
         {/* Controls */}
-        <div className="rounded-2xl border border-[var(--border-strong)] bg-[var(--bg-card)] p-6 shadow-sm">
+        <div className="rounded-2xl border border-[color-mix(in_srgb,var(--fg)_5%,transparent)] bg-[var(--bg-card)] p-6 shadow-sm">
           <div className="mb-6">
             <h3 className="text-sm font-semibold text-[var(--fg)]">Logo ring</h3>
             <p className="text-xs text-[var(--fg-muted)] mt-1">Show a colored ring around the logo on hover.</p>
@@ -93,7 +93,7 @@ export default function AdminBrandingPage() {
                 type="text"
                 value={color}
                 onChange={(e) => setColor(e.target.value)}
-                className="h-10 flex-1 rounded-lg border border-[var(--border-strong)] bg-[var(--bg-elevated)] px-3 text-sm text-[var(--fg)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+                className="h-10 flex-1 rounded-lg bg-[var(--bg-input)] px-3 text-sm text-[var(--fg)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
               />
             </div>
           </div>
@@ -114,22 +114,22 @@ export default function AdminBrandingPage() {
               value={announcementText}
               onChange={(e) => setAnnouncementText(e.target.value)}
               rows={3}
-              className="w-full rounded-lg border border-[var(--border-strong)] bg-[var(--bg-elevated)] px-3 py-2 text-sm text-[var(--fg)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] resize-none"
+              className="w-full rounded-lg bg-[var(--bg-input)] px-3 py-2 text-sm text-[var(--fg)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] resize-none"
             />
           </div>
 
           <div className="flex items-center justify-end gap-3 pt-4">
-            <Button variant="secondary" height={34} onClick={handleReset}>
+            <Button variant="secondary" size="sm" onClick={handleReset}>
               Reset
             </Button>
-            <Button height={34} onClick={handleSave} loading={saving || isLoading}>
+            <Button size="sm" onClick={handleSave} loading={saving || isLoading}>
               Save changes
             </Button>
           </div>
         </div>
 
         {/* Preview */}
-        <div className="rounded-2xl border border-[var(--border-strong)] bg-[var(--bg-card)] p-6 shadow-sm flex flex-col items-center justify-center">
+        <div className="rounded-2xl border border-[color-mix(in_srgb,var(--fg)_5%,transparent)] bg-[var(--bg-card)] p-6 shadow-sm flex flex-col items-center justify-center">
           <p className="text-xs font-medium text-[var(--fg-muted)] uppercase tracking-wider mb-6">Preview</p>
           <div className="group relative w-28 h-28">
             {enabled && (

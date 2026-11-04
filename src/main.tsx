@@ -4,7 +4,7 @@ import { BrowserRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import App from './App'
 import { ErrorBoundary } from './components/ErrorBoundary'
-import 'parthenon-ui/globals.css'
+import './styles/parthenon-globals.css'
 import './styles/globals.css'
 import 'sileo/styles.css'
 

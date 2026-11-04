@@ -1,163 +1,109 @@
-import { useQuery } from '@tanstack/react-query'
-import { getServer } from '../../api/servers'
-import { queryKeys } from '../../api/queryKeys'
-import { HugeiconsIcon } from '@hugeicons/react'
-import { ShieldIcon, ShieldBanIcon, AddIcon, DeleteIcon } from '@hugeicons/core-free-icons'
+import { useState } from 'react'
+import { useOutletContext } from 'react-router-dom'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import Button from '../../components/Button'
+import Heading from '../../components/ui/Heading'
+import { Spinner } from '../../components/ui/Spinner'
+import { Card, CardDescription, CardHeader, CardTitle } from '../../components/ui/Card'
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel,
+  AlertDialogContent, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '../../components/ui/alert-dialog'
+import type { ServerContext } from './ServerConsolePage'
+import type { FirewallRule } from '../../types/server'
 
-interface FirewallRule {
-  id: string
-  direction: 'inbound' | 'outbound'
-  action: 'allow' | 'deny'
-  protocol: 'tcp' | 'udp' | 'icmp'
-  source: string
-  port_start: number
-  port_end: number | null
-  notes: string | null
-}
+function RuleRow({ rule, serverId }: { rule: FirewallRule; serverId: string }) {
+  const [deleting, setDeleting] = useState(false)
+  const [showDelete, setShowDelete] = useState(false)
+  const queryClient = useQueryClient()
 
-const MOCK_INBOUND_RULES: FirewallRule[] = [
-  { id: 'rule-1', direction: 'inbound', action: 'allow', protocol: 'tcp', source: '0.0.0.0/0', port_start: 25565, port_end: 25565, notes: 'Minecraft game port' },
-  { id: 'rule-2', direction: 'inbound', action: 'allow', protocol: 'tcp', source: '0.0.0.0/0', port_start: 25575, port_end: 25575, notes: 'Minecraft query port' },
-  { id: 'rule-3', direction: 'inbound', action: 'deny', protocol: 'tcp', source: '10.0.0.0/8', port_start: 8080, port_end: 8080, notes: 'Block internal access to web panel' },
-]
-
-const MOCK_OUTBOUND_RULES: FirewallRule[] = [
-  { id: 'rule-4', direction: 'outbound', action: 'allow', protocol: 'tcp', source: '0.0.0.0/0', port_start: 443, port_end: 443, notes: 'HTTPS outbound' },
-  { id: 'rule-5', direction: 'outbound', action: 'allow', protocol: 'tcp', source: '0.0.0.0/0', port_start: 80, port_end: 80, notes: 'HTTP outbound' },
-]
-
-function formatPort(start: number, end: number | null) {
-  if (!end || start === end) return `${start}`
-  return `${start}-${end}`
-}
-
-function RuleCard({ rule }: { rule: FirewallRule }) {
-  const isAllow = rule.action === 'allow'
-  const isInbound = rule.direction === 'inbound'
+  const deleteRule = useMutation({
+    mutationFn: async (ruleId: string) => { const res = await fetch(`/api/servers/${serverId}/firewall/${ruleId}`, { method: 'DELETE' }); if (!res.ok) throw new Error('Failed') },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['server', serverId, 'firewall'] }); setDeleting(false); setShowDelete(false) },
+  })
 
   return (
-    <div className="group relative flex items-center gap-3 rounded-xl border border-theme-strong bg-[var(--bg-card)] px-1 py-1">
-      <div className={`relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg shadow-xs ring-1 ${
-        isAllow
-          ? 'bg-emerald-500/10 text-emerald-400 ring-emerald-500/20'
-          : 'bg-red-500/10 text-red-400 ring-red-500/20'
-      }`}>
-        <HugeiconsIcon icon={isAllow ? ShieldIcon : ShieldBanIcon} className="relative h-4 w-4" />
-      </div>
-      <div className="min-w-0 flex-1 pl-2">
-        <div className="flex items-center gap-2">
-          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${
-            isAllow
-              ? 'bg-emerald-500/10 text-emerald-400'
-              : 'bg-red-500/10 text-red-400'
-          }`}>
-            {isAllow ? 'Allow' : 'Deny'}
-          </span>
-          <span className="inline-flex items-center rounded-full bg-[var(--bg-elevated)] px-2 py-0.5 text-[11px] font-medium text-[var(--fg-muted)]">
-            {isInbound ? 'Inbound' : 'Outbound'}
-          </span>
-          <span className="rounded-full bg-[var(--bg-elevated)] px-2 py-0.5 font-mono text-[11px] font-medium uppercase text-[var(--fg-muted)]">
-            {rule.protocol}
-          </span>
+    <>
+      <div className="grid grid-cols-[4rem_5rem_1fr_auto] items-center gap-4 px-6 py-3 hover:bg-[var(--bg-elevated)]/30 transition-colors">
+        <span className="text-sm font-medium text-[var(--fg)]">
+          {rule.action === 'allow' ? 'Allow' : 'Deny'}
+        </span>
+        <span className="text-xs font-mono text-[var(--fg-muted)] uppercase">{rule.protocol || 'TCP'}</span>
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-[var(--fg)]">{rule.ip}</span>
+            <span className="text-[var(--fg-muted)]">:</span>
+            <span className="text-sm font-medium text-[var(--fg)]">{rule.port}</span>
+          </div>
+          {rule.note && <p className="text-xs text-[var(--fg-muted)] mt-0.5 truncate">{rule.note}</p>}
         </div>
-        <div className="mt-0.5 flex items-center gap-3 text-xs text-[var(--fg-muted)]">
-          <span>{rule.source}</span>
-          <span>Port {formatPort(rule.port_start, rule.port_end)}</span>
-          {rule.notes && <span className="truncate italic">{rule.notes}</span>}
-        </div>
+        <Button variant="danger" width="auto" height={28} onClick={() => setShowDelete(true)} disabled={deleting}>
+          Delete
+        </Button>
       </div>
-      <div className="flex items-center gap-1 pr-2">
-        <button
-          className="p-2 rounded-lg hover:bg-red-500/10 text-[var(--fg-muted)] hover:text-red-400 transition-colors"
-          title="Delete rule"
-        >
-          <HugeiconsIcon icon={DeleteIcon} className="h-3.5 w-3.5" />
-        </button>
-      </div>
-    </div>
+
+      <AlertDialog open={showDelete} onOpenChange={setShowDelete}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete rule</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this firewall rule? Traffic matching this rule will no longer be filtered.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setShowDelete(false)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { setDeleting(true); deleteRule.mutate(rule.id) }}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   )
 }
 
-export default function ServerFirewallPage({ serverId }: { serverId: string }) {
-  const { isLoading } = useQuery({
-    queryKey: queryKeys.servers.detail(serverId),
-    queryFn: () => getServer(serverId),
-    enabled: !!serverId,
+export default function ServerFirewallPage() {
+  const { server } = useOutletContext<ServerContext>()
+
+  const { data: rules, isLoading } = useQuery<FirewallRule[]>({
+    queryKey: ['server', server.id, 'firewall'],
+    queryFn: async () => { const res = await fetch(`/api/servers/${server.id}/firewall`); if (!res.ok) throw new Error('Failed'); return res.json() },
   })
 
-  const inboundRules = MOCK_INBOUND_RULES
-  const outboundRules = MOCK_OUTBOUND_RULES
-
-  if (isLoading) {
-    return (
-      <div className="px-1 py-6">
-        <p className="text-sm text-[var(--fg-muted)]">Loading firewall rules...</p>
-      </div>
-    )
-  }
-
   return (
-    <div className="px-1 py-6 space-y-4">
-      <div>
-        <h2 className="text-lg font-semibold text-[var(--fg)]">Firewall</h2>
-        <p className="text-sm text-[var(--fg-muted)]">Control inbound and outbound traffic to this server.</p>
-      </div>
+    <div className="space-y-6">
+      <Heading title="Firewall" description="Manage inbound and outbound firewall rules for this server." />
 
-      {/* Default policy banner */}
-      <div className="rounded-md bg-[var(--bg-elevated)] p-1">
-        <div className="flex items-center justify-between rounded-md border border-theme-strong bg-[var(--bg-card)] px-4 py-3">
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium text-[var(--fg)]">Default policy: Allow all traffic</p>
-            <p className="text-xs text-[var(--fg-muted)]">
-              All inbound and outbound connections are permitted unless a rule below blocks them.
-            </p>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">Default policy</CardTitle>
+          <CardDescription>All inbound and outbound connections are permitted unless a rule below blocks them.</CardDescription>
+        </CardHeader>
+      </Card>
+
+      <Card className="overflow-hidden [&>[data-slot=card-inner]]:py-0">
+        <div className="grid grid-cols-[4rem_5rem_1fr_auto] gap-4 px-6 py-2.5 text-xs font-medium text-[var(--fg-muted)] border-b border-[var(--border)]">
+          <span>Action</span>
+          <span>Protocol</span>
+          <span>Rule</span>
+          <span></span>
+        </div>
+        {isLoading ? (
+          <div className="text-center py-12">
+            <Spinner className="mx-auto size-5 text-[var(--fg-muted)]" />
+            <p className="text-sm text-[var(--fg-muted)] mt-3">Loading rules...</p>
           </div>
-          <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] bg-[var(--accent)] text-white text-xs font-medium hover:opacity-90 transition-opacity">
-            <HugeiconsIcon icon={AddIcon} className="h-4 w-4" />
-            Add rule
-          </button>
-        </div>
-      </div>
-
-      {/* Inbound Rules */}
-      <div className="rounded-md bg-[var(--bg-elevated)] p-1">
-        <div className="rounded-md border border-theme-strong bg-[var(--bg-card)] p-6">
-          <h3 className="text-sm font-semibold text-[var(--fg)]">Inbound rules</h3>
-          <p className="text-xs text-[var(--fg-muted)] mt-0.5 mb-4">Control incoming connections to this server.</p>
-
-          {inboundRules.length > 0 ? (
-            <div className="grid gap-2">
-              {inboundRules.map((rule) => (
-                <RuleCard key={rule.id} rule={rule} />
-              ))}
-            </div>
-          ) : (
-            <div className="rounded-xl border border-dashed border-theme-strong px-4 py-6 text-center">
-              <p className="text-xs text-[var(--fg-muted)]">No inbound rules — all incoming traffic is allowed.</p>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Outbound Rules */}
-      <div className="rounded-md bg-[var(--bg-elevated)] p-1">
-        <div className="rounded-md border border-theme-strong bg-[var(--bg-card)] p-6">
-          <h3 className="text-sm font-semibold text-[var(--fg)]">Outbound rules</h3>
-          <p className="text-xs text-[var(--fg-muted)] mt-0.5 mb-4">Control outgoing connections from this server.</p>
-
-          {outboundRules.length > 0 ? (
-            <div className="grid gap-2">
-              {outboundRules.map((rule) => (
-                <RuleCard key={rule.id} rule={rule} />
-              ))}
-            </div>
-          ) : (
-            <div className="rounded-xl border border-dashed border-theme-strong px-4 py-6 text-center">
-              <p className="text-xs text-[var(--fg-muted)]">No outbound rules — all outgoing traffic is allowed.</p>
-            </div>
-          )}
-        </div>
-      </div>
+        ) : rules && rules.length > 0 ? (
+          <div className="divide-y divide-[var(--border)]">
+            {rules.map((rule) => (
+              <RuleRow key={rule.id} rule={rule} serverId={String(server.id)} />
+            ))}
+          </div>
+        ) : (
+          <div className="px-6 py-12 text-center">
+            <p className="text-sm text-[var(--fg-muted)]">No rules — all traffic is allowed.</p>
+          </div>
+        )}
+      </Card>
     </div>
   )
 }

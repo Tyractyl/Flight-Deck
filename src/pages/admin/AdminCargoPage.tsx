@@ -64,11 +64,10 @@ function CreateEggDialog({ open, onClose }: { open: boolean; onClose: () => void
           </div>
         </div>
         <DialogFooter>
-          <Button variant="secondary" width={80} height={34} onClick={onClose}>Cancel</Button>
+          <Button variant="secondary" size="sm" onClick={onClose}>Cancel</Button>
           <Button
-            variant="primary"
-            width={110}
-            height={34}
+            variant="default"
+            size="sm"
             onClick={() => createMutation.mutate()}
             disabled={!name || !dockerImage || !startCmd || createMutation.isPending}
             loading={createMutation.isPending}
@@ -118,9 +117,8 @@ function EggDetailDialog({ egg, open, onClose }: { egg: Egg; open: boolean; onCl
         </div>
         <DialogFooter>
           <Button
-            variant="danger"
-            width={110}
-            height={34}
+            variant="destructive"
+            size="sm"
             onClick={() => {
               if (confirm(`Delete "${egg.name}"? This cannot be undone.`)) deleteMutation.mutate()
             }}
@@ -179,7 +177,7 @@ export default function AdminCargoPage() {
       title="Egg Templates"
       description="Manage game and application templates."
       actions={
-        <Button variant="primary" width={120} height={34} onClick={() => setShowCreate(true)}>
+        <Button variant="default" size="sm" onClick={() => setShowCreate(true)}>
           Create Egg
         </Button>
       }

@@ -1,13 +1,26 @@
-import { useEffect, useState, createContext, useContext } from 'react'
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from './store/authStore'
+import { AuthReadyContext, useAuthState } from './context/AuthReadyContext'
 import { Toaster } from 'sileo'
 import AuthPage from './pages/auth/AuthPage'
 import ResetPasswordPage from './pages/auth/ResetPasswordPage'
 import DashboardPage from './pages/dashboard/DashboardPage'
 import ServersPage from './pages/servers/ServersPage'
-import ServerDetailPage from './pages/servers/ServerDetailPage'
-import CreateServerPage from './pages/servers/CreateServerPage'
+import { CreateServerDialog } from './pages/servers/CreateServerDialog'
+import ServerConsolePage from './pages/servers/ServerConsolePage'
+import ServerFilesPage from './pages/servers/ServerFilesPage'
+import ServerBackupsPage from './pages/servers/ServerBackupsPage'
+import ServerUsersPage from './pages/servers/ServerUsersPage'
+import ServerSettingsPage from './pages/servers/ServerSettingsPage'
+import ServerAllocationsPage from './pages/servers/ServerAllocationsPage'
+import ServerFirewallPage from './pages/servers/ServerFirewallPage'
+import ServerDatabasePage from './pages/servers/ServerDatabasePage'
+import ServerStartupPage from './pages/servers/ServerStartupPage'
+import ServerSchedulePage from './pages/servers/ServerSchedulePage'
+import ServerActivityPage from './pages/servers/ServerActivityPage'
+import ServerSoftwarePage from './pages/servers/ServerSoftwarePage'
+import ServerLayout from './components/server/ServerLayout'
 import StorePage from './pages/store/StorePage'
 import AfkPage from './pages/afk/AfkPage'
 import AccountPage from './pages/account/AccountPage'
@@ -24,22 +37,17 @@ import AdminBrandingPage from './pages/admin/AdminBrandingPage'
 import axios from 'axios'
 import { setAccessToken, getAccessToken } from './api/client'
 import type { User } from './types/server'
+import { TooltipProvider } from './components/ui/Tooltip'
 import { FrameLayout } from './components/layout/FrameLayout'
 import { PageTransition } from './components/layout/PageTransition'
 import { AdminPageLayout } from './components/admin/AdminPageLayout'
 import LoadingScreen from './components/LoadingScreen'
 
-interface AuthState {
-  isReady: boolean
-  showLoading: boolean
-}
 
-const AuthReadyContext = createContext<AuthState>({ isReady: false, showLoading: true })
-export const useAuthReady = () => useContext(AuthReadyContext).isReady
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
-  const { isReady, showLoading } = useContext(AuthReadyContext)
+  const { isReady, showLoading } = useAuthState()
   if (!isReady && !isAuthenticated) return <><LoadingScreen fadingOut={false} /></>
   if (!isAuthenticated) return <Navigate to="/auth" replace />
   return (
@@ -57,6 +65,22 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
 }
 
 function AppLayout({ children }: { children: React.ReactNode }) {
+  const location = useLocation();
+  /* Server detail pages own a full-bleed layout: the sidebar and console card
+     connect straight to the app shell, so they skip the standard page padding. */
+  const isServerDetail =
+    /^\/servers\/[^/]/.test(location.pathname);
+
+  if (isServerDetail) {
+    return (
+      <FrameLayout>
+        <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
+          <PageTransition>{children}</PageTransition>
+        </div>
+      </FrameLayout>
+    );
+  }
+
   return (
     <FrameLayout>
       <div className="flex-1 min-h-0 overflow-auto overscroll-contain grid">
@@ -173,8 +197,20 @@ function AuthInitializer({ children }: { children: React.ReactNode }) {
     return () => { cancelled = true }
   }, [])
 
+  // Replays the boot loading choreography when the user signs in from the
+  // auth page: the overlay covers the app until isReady, then blurs away.
+  function beginEntry() {
+    setIsReady(false)
+    setShowLoading(true)
+    setTimeout(() => {
+      setIsReady(true)
+      // Wait for the blur/fade-out animation to finish before removing the overlay
+      setTimeout(() => setShowLoading(false), 900)
+    }, MIN_LOADING_MS)
+  }
+
   return (
-    <AuthReadyContext.Provider value={{ isReady, showLoading }}>
+    <AuthReadyContext.Provider value={{ isReady, showLoading, beginEntry }}>
       {children}
     </AuthReadyContext.Provider>
   )
@@ -183,8 +219,9 @@ function AuthInitializer({ children }: { children: React.ReactNode }) {
 export default function App() {
   return (
     <AuthInitializer>
+    <TooltipProvider>
     <Toaster
-      position="bottom-left"
+      position="bottom-center"
       theme="dark"
     />
     <Routes>
@@ -195,8 +232,20 @@ export default function App() {
       <Route path="/register" element={<Navigate to="/auth?mode=signup" replace />} />
       <Route path="/" element={<ProtectedRoute><AppLayout><DashboardPage /></AppLayout></ProtectedRoute>} />
       <Route path="/servers" element={<ProtectedRoute><AppLayout><ServersPage /></AppLayout></ProtectedRoute>} />
-      <Route path="/servers/new" element={<ProtectedRoute><AppLayout><CreateServerPage /></AppLayout></ProtectedRoute>} />
-      <Route path="/servers/:id" element={<ProtectedRoute><AppLayout><ServerDetailPage /></AppLayout></ProtectedRoute>} />
+      <Route path="/servers/:id" element={<ProtectedRoute><AppLayout><ServerLayout /></AppLayout></ProtectedRoute>}>
+        <Route index element={<ServerConsolePage />} />
+        <Route path="files" element={<ServerFilesPage />} />
+        <Route path="backups" element={<ServerBackupsPage />} />
+        <Route path="users" element={<ServerUsersPage />} />
+        <Route path="allocations" element={<ServerAllocationsPage />} />
+        <Route path="firewall" element={<ServerFirewallPage />} />
+        <Route path="database" element={<ServerDatabasePage />} />
+        <Route path="startup" element={<ServerStartupPage />} />
+        <Route path="schedule" element={<ServerSchedulePage />} />
+        <Route path="activity" element={<ServerActivityPage />} />
+        <Route path="software" element={<ServerSoftwarePage />} />
+        <Route path="settings" element={<ServerSettingsPage />} />
+      </Route>
       <Route path="/store" element={<ProtectedRoute><AppLayout><StorePage /></AppLayout></ProtectedRoute>} />
       <Route path="/afk" element={<ProtectedRoute><AppLayout><AfkPage /></AppLayout></ProtectedRoute>} />
       <Route path="/account" element={<ProtectedRoute><AppLayout><AccountPage /></AppLayout></ProtectedRoute>} />
@@ -211,8 +260,11 @@ export default function App() {
       <Route path="/admin/activity" element={<ProtectedRoute><AdminRoute><AdminPageLayout><AdminActivityPage /></AdminPageLayout></AdminRoute></ProtectedRoute>} />
       <Route path="/admin/locations" element={<ProtectedRoute><AdminRoute><AdminPageLayout><AdminLocationsPage /></AdminPageLayout></AdminRoute></ProtectedRoute>} />
       <Route path="/admin/branding" element={<ProtectedRoute><AdminRoute><AdminPageLayout><AdminBrandingPage /></AdminPageLayout></AdminRoute></ProtectedRoute>} />
+      <Route path="/servers/new" element={<Navigate to="/servers" replace />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    <CreateServerDialog />
+    </TooltipProvider>
     </AuthInitializer>
   )
 }

@@ -1,5 +1,4 @@
 import { useState, useRef } from 'react'
-import { Input } from '../../components/ui/Input'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useParams } from 'react-router-dom'
 import { queryKeys } from '../../api/queryKeys'
@@ -7,23 +6,20 @@ import { getServer } from '../../api/servers'
 import { listFiles, readFile, writeFile, createFileOrFolder, deleteFileOrFolder, uploadFile } from '../../api/files'
 import type { FileEntry } from '../../api/files'
 import { sileo } from 'sileo'
+import Button from '../../components/Button'
+import Heading from '../../components/ui/Heading'
 import {
-  FolderIcon,
-  FolderAddIcon,
-  FolderUploadIcon,
-  FileIcon,
-  FileCodeIcon,
-  FileCogIcon,
-  ImageIcon,
-  MusicNoteIcon,
-  VideoIcon,
-  ArchiveIcon,
-  RefreshIcon,
-  UploadIcon,
-  AddIcon,
-  DeleteIcon,
-} from '@hugeicons/core-free-icons'
-import { HugeiconsIcon } from '@hugeicons/react'
+  AlertDialog, AlertDialogAction, AlertDialogCancel,
+  AlertDialogContent, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '../../components/ui/alert-dialog'
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter,
+  DialogHeader, DialogTitle,
+} from '../../components/ui/dialog'
+import { Input } from '../../components/ui/Input'
+import { Card } from '../../components/ui/Card'
+import { Spinner } from '../../components/ui/Spinner'
 
 function formatBytes(sizeBytes: number | null): string {
   if (sizeBytes === null || sizeBytes === undefined) return '—'
@@ -32,52 +28,17 @@ function formatBytes(sizeBytes: number | null): string {
   return `${(sizeBytes / (1024 * 1024)).toFixed(1)} MiB`
 }
 
-function getFileVisual(entry: FileEntry): { icon: typeof FileIcon; iconColor: string; label: string; bgColor: string } {
-  if (entry.is_dir) return { icon: FolderIcon, iconColor: 'text-[var(--accent)]', label: 'Directory', bgColor: 'bg-[var(--accent)]/10' }
-
-  const ext = entry.name.split('.').pop()?.toLowerCase() || ''
-  if (['js', 'ts', 'tsx', 'jsx', 'py', 'go', 'rs', 'java', 'c', 'cpp', 'php'].includes(ext))
-    return { icon: FileCodeIcon, iconColor: 'text-sky-400', label: 'Code file', bgColor: 'bg-sky-500/10' }
-  if (['json'].includes(ext))
-    return { icon: FileIcon, iconColor: 'text-lime-400', label: 'JSON file', bgColor: 'bg-lime-500/10' }
-  if (['yml', 'yaml', 'toml', 'ini', 'conf', 'env', 'properties'].includes(ext))
-    return { icon: FileCogIcon, iconColor: 'text-violet-400', label: 'Config file', bgColor: 'bg-violet-500/10' }
-  if (['sh', 'bash', 'zsh'].includes(ext) || entry.name === 'Dockerfile')
-    return { icon: FileCogIcon, iconColor: 'text-emerald-400', label: 'Shell file', bgColor: 'bg-emerald-500/10' }
-  if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].includes(ext))
-    return { icon: ImageIcon, iconColor: 'text-pink-400', label: 'Image file', bgColor: 'bg-pink-500/10' }
-  if (['mp3', 'ogg', 'wav', 'flac'].includes(ext))
-    return { icon: MusicNoteIcon, iconColor: 'text-cyan-400', label: 'Audio file', bgColor: 'bg-cyan-500/10' }
-  if (['mp4', 'mov', 'webm', 'mkv'].includes(ext))
-    return { icon: VideoIcon, iconColor: 'text-fuchsia-400', label: 'Video file', bgColor: 'bg-fuchsia-500/10' }
-  if (['zip', 'tar', 'gz', 'rar'].includes(ext))
-    return { icon: ArchiveIcon, iconColor: 'text-orange-400', label: 'Archive', bgColor: 'bg-orange-500/10' }
-  if (['md', 'txt', 'log'].includes(ext))
-    return { icon: FileIcon, iconColor: 'text-stone-400', label: 'Text file', bgColor: 'bg-stone-500/10' }
-
-  return { icon: FileIcon, iconColor: 'text-[var(--fg-muted)]', label: 'File', bgColor: 'bg-[var(--bg-elevated)]' }
-}
-
 function BreadcrumbPath({ currentPath, onNavigate }: { currentPath: string; onNavigate: (path: string) => void }) {
   const segments = currentPath.split('/').filter(Boolean)
-
   return (
-    <div className="flex items-center gap-1 text-sm font-medium text-[var(--fg)]">
-      <button
-        type="button"
-        onClick={() => onNavigate('')}
-        className="rounded px-1.5 py-0.5 pl-2 transition-colors hover:bg-[var(--bg-elevated)]"
-      >
+    <div className="flex flex-wrap items-center gap-1 text-sm">
+      <button type="button" onClick={() => onNavigate('')} className="rounded px-1.5 py-0.5 text-[var(--fg-muted)] hover:text-[var(--fg)] transition-colors">
         /home/container
       </button>
       {segments.map((segment, index) => (
         <div key={index} className="flex items-center gap-1">
           <span className="text-[var(--fg-muted)]">/</span>
-          <button
-            type="button"
-            onClick={() => onNavigate(segments.slice(0, index + 1).join('/'))}
-            className="rounded px-1.5 py-0.5 text-[var(--fg-muted)] transition-colors hover:bg-[var(--bg-elevated)] hover:text-[var(--fg)]"
-          >
+          <button type="button" onClick={() => onNavigate(segments.slice(0, index + 1).join('/'))} className="rounded px-1.5 py-0.5 text-[var(--fg-muted)] transition-colors hover:text-[var(--fg)]">
             {segment}
           </button>
         </div>
@@ -86,36 +47,12 @@ function BreadcrumbPath({ currentPath, onNavigate }: { currentPath: string; onNa
   )
 }
 
-function ActionBar({
-  label, icon, onClick, variant = 'secondary', disabled,
-}: {
-  label: string
-  icon: typeof FileIcon
-  onClick: () => void
-  variant?: 'primary' | 'secondary'
-  disabled?: boolean
-}) {
-  const cls = variant === 'primary'
-    ? 'bg-[var(--accent)] text-white hover:opacity-90'
-    : 'bg-[var(--bg-elevated)] text-[var(--fg)] border border-theme-strong hover:bg-[var(--bg-card)]'
-  return (
-    <button
-      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-150 disabled:opacity-40 ${cls}`}
-      onClick={onClick}
-      disabled={disabled}
-    >
-      <HugeiconsIcon icon={icon} className="h-3.5 w-3.5" />
-      {label}
-    </button>
-  )
-}
-
 export default function ServerFilesPage() {
   const { id } = useParams<{ id: string }>()
   const queryClient = useQueryClient()
-
   const [currentPath, setCurrentPath] = useState('')
   const [search, setSearch] = useState('')
+  const [deletingFile, setDeletingFile] = useState<FileEntry | null>(null)
   const [editorState, setEditorState] = useState<{ path: string; contents: string } | null>(null)
   const [editorValue, setEditorValue] = useState('')
   const [savingFile, setSavingFile] = useState(false)
@@ -125,73 +62,33 @@ export default function ServerFilesPage() {
   const [uploading, setUploading] = useState(false)
   const uploadInputRef = useRef<HTMLInputElement>(null)
 
-  const { data: server } = useQuery({
-    queryKey: queryKeys.servers.detail(id!),
-    queryFn: () => getServer(id!),
-    enabled: !!id,
-  })
-
-  const { data: entries = [], isLoading, refetch } = useQuery({
-    queryKey: queryKeys.servers.files(id!, currentPath),
-    queryFn: () => listFiles(id!, currentPath || '/'),
-    enabled: !!id,
-  })
+  const { data: server } = useQuery({ queryKey: queryKeys.servers.detail(id!), queryFn: () => getServer(id!), enabled: !!id })
+  const { data: entries = [], isLoading, refetch } = useQuery({ queryKey: queryKeys.servers.files(id!, currentPath), queryFn: () => listFiles(id!, currentPath || '/'), enabled: !!id })
 
   const createMutation = useMutation({
-    mutationFn: ({ path, type }: { path: string; type: 'file' | 'folder' }) =>
-      createFileOrFolder(id!, path, type),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.servers.files(id!, currentPath) })
-      sileo.success({ description: 'Created', icon: false })
-    },
+    mutationFn: ({ path, type }: { path: string; type: 'file' | 'folder' }) => createFileOrFolder(id!, path, type),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: queryKeys.servers.files(id!, currentPath) }); sileo.success({ description: 'Created', icon: false }) },
     onError: () => sileo.error({ description: 'Failed to create', icon: false }),
   })
 
   const deleteMutation = useMutation({
     mutationFn: (path: string) => deleteFileOrFolder(id!, path),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.servers.files(id!, currentPath) })
-      sileo.success({ description: 'Deleted', icon: false })
-    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: queryKeys.servers.files(id!, currentPath) }); sileo.success({ description: 'Deleted', icon: false }) },
     onError: () => sileo.error({ description: 'Failed to delete', icon: false }),
   })
 
-  const filteredEntries = entries.filter((entry: FileEntry) =>
-    !search || entry.name.toLowerCase().includes(search.toLowerCase())
-  )
-
-  const navigateTo = (path: string) => {
-    setCurrentPath(path)
-    setSearch('')
-  }
+  const filteredEntries = entries.filter((entry: FileEntry) => !search || entry.name.toLowerCase().includes(search.toLowerCase()))
+  const navigateTo = (path: string) => { setCurrentPath(path); setSearch('') }
 
   const openEntry = async (entry: FileEntry) => {
-    if (entry.is_dir) {
-      navigateTo(entry.path)
-    } else {
-      try {
-        const data = await readFile(id!, entry.path)
-        setEditorState({ path: entry.path, contents: data.content || '' })
-        setEditorValue(data.content || '')
-      } catch {
-        sileo.error({ description: 'Failed to read file', icon: false })
-      }
-    }
+    if (entry.is_dir) { navigateTo(entry.path); return }
+    try { const data = await readFile(id!, entry.path); setEditorState({ path: entry.path, contents: data.content || '' }); setEditorValue(data.content || '') } catch { sileo.error({ description: 'Failed to read file', icon: false }) }
   }
 
   const handleSaveFile = async () => {
     if (!editorState) return
     setSavingFile(true)
-    try {
-      await writeFile(id!, editorState.path, editorValue)
-      queryClient.invalidateQueries({ queryKey: queryKeys.servers.files(id!, currentPath) })
-      sileo.success({ description: 'File saved', icon: false })
-      setEditorState(null)
-    } catch {
-      sileo.error({ description: 'Failed to save file', icon: false })
-    } finally {
-      setSavingFile(false)
-    }
+    try { await writeFile(id!, editorState.path, editorValue); queryClient.invalidateQueries({ queryKey: queryKeys.servers.files(id!, currentPath) }); sileo.success({ description: 'File saved', icon: false }); setEditorState(null) } catch { sileo.error({ description: 'Failed to save file', icon: false }) } finally { setSavingFile(false) }
   }
 
   const handleCreate = (type: 'file' | 'folder') => {
@@ -205,155 +102,110 @@ export default function ServerFilesPage() {
   const handleUpload = async (files: FileList | null) => {
     if (!files?.length) return
     setUploading(true)
-    try {
-      for (const file of Array.from(files)) {
-        const filePath = currentPath ? `${currentPath}/${file.name}` : file.name
-        await uploadFile(id!, filePath, file)
-      }
-      queryClient.invalidateQueries({ queryKey: queryKeys.servers.files(id!, currentPath) })
-      sileo.success({ description: `${files.length} file(s) uploaded`, icon: false })
-    } catch {
-      sileo.error({ description: 'Upload failed', icon: false })
-    } finally {
-      setUploading(false)
-      if (uploadInputRef.current) uploadInputRef.current.value = ''
-    }
+    try { for (const file of Array.from(files)) { await uploadFile(id!, currentPath ? `${currentPath}/${file.name}` : file.name, file) }; queryClient.invalidateQueries({ queryKey: queryKeys.servers.files(id!, currentPath) }); sileo.success({ description: `${files.length} file(s) uploaded`, icon: false }) } catch { sileo.error({ description: 'Upload failed', icon: false }) } finally { setUploading(false); if (uploadInputRef.current) uploadInputRef.current.value = '' }
   }
 
   if (!server) return null
 
   return (
-    <div className="px-1 py-6 space-y-4">
-      <div>
-        <h2 className="text-lg font-semibold text-[var(--fg)]">Files</h2>
-        <p className="text-sm text-[var(--fg-muted)]">Browse, upload, edit, and manage files inside your server container.</p>
-      </div>
-
-      {/* Toolbar */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <BreadcrumbPath currentPath={currentPath} onNavigate={navigateTo} />
-        <div className="flex flex-wrap items-center gap-2">
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <Heading title="Files" description="Browse, upload, edit, and manage files inside your server container." />
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
           {currentPath && (
-            <ActionBar
-              label="Up"
-              icon={FolderUploadIcon}
-              onClick={() => {
-                const parts = currentPath.split('/')
-                parts.pop()
-                navigateTo(parts.join('/'))
-              }}
-            />
+            <Button variant="secondary" width="auto" height={32} onClick={() => { const parts = currentPath.split('/'); parts.pop(); navigateTo(parts.join('/')) }}>
+              Up
+            </Button>
           )}
-          <ActionBar label="Refresh" icon={RefreshIcon} onClick={() => refetch()} />
-          <ActionBar label="Upload" icon={UploadIcon} onClick={() => uploadInputRef.current?.click()} disabled={uploading} />
-          <ActionBar label="New folder" icon={FolderAddIcon} onClick={() => setCreateFolderOpen(true)} variant="primary" />
-          <ActionBar label="New file" icon={AddIcon} onClick={() => setCreateFileOpen(true)} variant="primary" />
-          <Input
-            placeholder="Search files..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-40 text-xs h-7"
-          />
+          <Button variant="secondary" width="auto" height={32} onClick={() => refetch()} disabled={isLoading}>
+            Refresh
+          </Button>
+          <Button variant="secondary" width="auto" height={32} onClick={() => uploadInputRef.current?.click()} disabled={uploading}>
+            Upload
+          </Button>
+          <Button width="auto" height={32} onClick={() => setCreateFolderOpen(true)}>
+            New folder
+          </Button>
+          <Button width="auto" height={32} onClick={() => setCreateFileOpen(true)}>
+            New file
+          </Button>
         </div>
       </div>
+
+      <BreadcrumbPath currentPath={currentPath} onNavigate={navigateTo} />
 
       <input ref={uploadInputRef} type="file" multiple className="hidden" onChange={(e) => handleUpload(e.target.files)} />
 
-      {/* Section wrapper */}
-      <div className="rounded-md bg-[var(--bg-elevated)] p-1">
-        <div className="rounded-md border border-theme-strong bg-[var(--bg-card)] p-6">
-          {isLoading ? (
-            <div className="text-center py-8">
-              <p className="text-sm text-[var(--fg-muted)]">Loading files...</p>
-            </div>
-          ) : filteredEntries.length > 0 ? (
-            <div className="grid gap-2 sm:grid-cols-2">
-              {filteredEntries.map((entry: FileEntry) => {
-                const { icon, iconColor, label, bgColor } = getFileVisual(entry)
-                return (
-                  <div
-                    key={entry.path}
-                    className="group relative flex items-center gap-3 rounded-xl border border-theme-strong bg-[var(--bg-card)] px-1 py-1 cursor-pointer hover:bg-[var(--bg-elevated)] transition-colors"
-                    onClick={() => openEntry(entry)}
-                  >
-                    <div className={`relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg shadow-xs ring-1 ring-theme-strong ${bgColor}`}>
-                      <HugeiconsIcon icon={icon} className={`relative h-4 w-4 ${iconColor}`} />
-                    </div>
-                    <div className="min-w-0 flex-1 pl-2">
-                      <p className="truncate text-sm font-medium text-[var(--fg)]">{entry.name}</p>
-                      <div className="flex items-center gap-2 text-xs text-[var(--fg-muted)]">
-                        <span>{label}</span>
-                        {!entry.is_dir && <span>{formatBytes(entry.size)}</span>}
-                      </div>
-                    </div>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        const action = entry.is_dir ? 'Delete folder' : 'Delete file'
-                        if (confirm(`${action} "${entry.name}"?`)) deleteMutation.mutate(entry.path)
-                      }}
-                      className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-red-500/10 text-[var(--fg-muted)] hover:text-red-400 transition-all mr-2"
-                    >
-                      <HugeiconsIcon icon={DeleteIcon} className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                )
-              })}
-            </div>
-          ) : (
-            <div className="rounded-xl border border-dashed border-theme-strong px-4 py-8 text-center">
-              <p className="text-xs text-[var(--fg-muted)]">
-                {search ? 'No files match your search.' : 'This directory is empty.'}
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
+      <Card className="overflow-hidden [&>[data-slot=card-inner]]:py-0">
+        {isLoading ? (
+          <div className="text-center py-12">
+            <Spinner className="size-5 mx-auto text-[var(--fg-muted)]" />
+            <p className="text-sm text-[var(--fg-muted)] mt-3">Loading files...</p>
+          </div>
+        ) : filteredEntries.length > 0 ? (
+          <div className="divide-y divide-[var(--border)]">
+            {filteredEntries.map((entry: FileEntry) => (
+              <div key={entry.path} className="group flex items-center gap-3 px-6 py-3 hover:bg-[var(--bg-elevated)]/30 transition-colors">
+                <button
+                  type="button"
+                  className="min-w-0 flex-1 text-left"
+                  onClick={() => openEntry(entry)}
+                >
+                  <p className="text-sm font-medium text-[var(--fg)] truncate">
+                    {entry.is_dir ? `${entry.name}/` : entry.name}
+                  </p>
+                </button>
+                {!entry.is_dir && <span className="text-xs text-[var(--fg-muted)] w-24 text-right shrink-0">{formatBytes(entry.size)}</span>}
+                <Button
+                  variant="danger"
+                  width="auto"
+                  height={28}
+                  className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                  onClick={() => setDeletingFile(entry)}
+                >
+                  Delete
+                </Button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="px-6 py-12 text-center">
+            <p className="text-sm text-[var(--fg-muted)]">{search ? 'No files match your search.' : 'This directory is empty.'}</p>
+          </div>
+        )}
+      </Card>
 
       {/* File Editor Modal */}
       {editorState && (
         <div className="fixed inset-0 z-50 flex flex-col bg-[var(--bg)]">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-theme-strong">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)]">
             <div>
               <h3 className="text-base font-semibold text-[var(--fg)]">Edit File</h3>
               <p className="text-xs text-[var(--fg-muted)]">/home/container{editorState.path}</p>
             </div>
             <div className="flex items-center gap-2">
-              <button
-                onClick={() => { setEditorState(null); setEditorValue('') }}
-                className="px-3 py-1.5 rounded-lg bg-[var(--bg-elevated)] text-[var(--fg)] text-xs font-medium border border-theme-strong hover:bg-[var(--bg-card)] transition-colors"
-              >
-                Close
-              </button>
-              <button
-                onClick={handleSaveFile}
-                disabled={savingFile}
-                className="px-3 py-1.5 rounded-lg bg-[var(--accent)] text-white text-xs font-medium hover:opacity-90 transition-opacity disabled:opacity-40"
-              >
-                {savingFile ? 'Saving...' : 'Save content'}
-              </button>
+              <Button variant="secondary" width="auto" height={32} onClick={() => { setEditorState(null); setEditorValue('') }}>Close</Button>
+              <Button width="auto" height={32} onClick={handleSaveFile} loading={savingFile} disabled={savingFile}>
+                Save
+              </Button>
             </div>
           </div>
-          <div className="flex-1 overflow-hidden">
-            <textarea
-              value={editorValue}
-              onChange={(e) => setEditorValue(e.target.value)}
-              className="w-full h-full p-6 bg-[var(--bg)] text-[var(--fg)] font-mono text-sm border-none focus:outline-none resize-none"
-              spellCheck={false}
-            />
+          <div className="flex-1 min-h-0 p-6">
+            <textarea value={editorValue} onChange={(e) => setEditorValue(e.target.value)} className="w-full h-full bg-[var(--bg)] text-[var(--fg)] font-mono text-sm border border-[var(--border-strong)] rounded-lg p-4 focus:outline-none focus:border-[var(--accent)] resize-none" spellCheck={false} />
           </div>
         </div>
       )}
 
       {/* Create File Dialog */}
-      {createFileOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div className="bg-[var(--bg-card)] rounded-xl border border-theme-strong p-6 w-full max-w-sm mx-4">
-            <h3 className="text-lg font-semibold text-[var(--fg)]">Create File</h3>
-            <p className="text-xs text-[var(--fg-muted)] mt-1 mb-4">
-              This file will be created as{' '}
-              <span className="font-mono text-[var(--fg)]">/home/container{currentPath ? `/${currentPath}` : ''}/{newName || 'new-file.txt'}</span>
-            </p>
+      <Dialog open={createFileOpen} onOpenChange={setCreateFileOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create File</DialogTitle>
+            <DialogDescription>
+              This file will be created as <code className="rounded bg-[var(--bg-elevated)] px-1.5 py-0.5 font-mono text-xs text-[var(--fg)]">/home/container{currentPath ? `/${currentPath}` : ''}/{newName || 'new-file.txt'}</code>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-4 grid gap-2">
             <Input
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
@@ -361,22 +213,51 @@ export default function ServerFilesPage() {
               autoFocus
               onKeyDown={(e) => { if (e.key === 'Enter') handleCreate('file') }}
             />
-            <div className="flex justify-end gap-2 mt-4">                <button onClick={() => { setCreateFileOpen(false); setNewName('') }} className="px-3 py-1.5 rounded-[8px] bg-[var(--bg-elevated)] text-[var(--fg)] text-xs font-medium border border-theme-strong">Cancel</button>
-                <button onClick={() => handleCreate('file')} disabled={!newName} className="px-3 py-1.5 rounded-[8px] bg-[var(--accent)] text-white text-xs font-medium disabled:opacity-40">Create file</button>
-            </div>
           </div>
-        </div>
-      )}
+          <DialogFooter className="mt-6">
+            <Button variant="secondary" width="auto" height={32} onClick={() => { setCreateFileOpen(false); setNewName('') }}>Cancel</Button>
+            <Button width="auto" height={32} onClick={() => handleCreate('file')} disabled={!newName}>Create file</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation AlertDialog */}
+      <AlertDialog open={!!deletingFile} onOpenChange={() => setDeletingFile(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {deletingFile?.is_dir ? 'Delete folder' : 'Delete file'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete &quot;{deletingFile?.name}&quot;? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (deletingFile) {
+                  deleteMutation.mutate(deletingFile.path)
+                  setDeletingFile(null)
+                }
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Create Folder Dialog */}
-      {createFolderOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div className="bg-[var(--bg-card)] rounded-xl border border-theme-strong p-6 w-full max-w-sm mx-4">
-            <h3 className="text-lg font-semibold text-[var(--fg)]">Create Folder</h3>
-            <p className="text-xs text-[var(--fg-muted)] mt-1 mb-4">
-              This directory will be created as{' '}
-              <span className="font-mono text-[var(--fg)]">/home/container{currentPath ? `/${currentPath}` : ''}/{newName || 'new-folder'}</span>
-            </p>
+      <Dialog open={createFolderOpen} onOpenChange={setCreateFolderOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create Folder</DialogTitle>
+            <DialogDescription>
+              This directory will be created as <code className="rounded bg-[var(--bg-elevated)] px-1.5 py-0.5 font-mono text-xs text-[var(--fg)]">/home/container{currentPath ? `/${currentPath}` : ''}/{newName || 'new-folder'}</code>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-4 grid gap-2">
             <Input
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
@@ -384,12 +265,13 @@ export default function ServerFilesPage() {
               autoFocus
               onKeyDown={(e) => { if (e.key === 'Enter') handleCreate('folder') }}
             />
-            <div className="flex justify-end gap-2 mt-4">                <button onClick={() => { setCreateFolderOpen(false); setNewName('') }} className="px-3 py-1.5 rounded-[8px] bg-[var(--bg-elevated)] text-[var(--fg)] text-xs font-medium border border-theme-strong">Cancel</button>
-                <button onClick={() => handleCreate('folder')} disabled={!newName} className="px-3 py-1.5 rounded-[8px] bg-[var(--accent)] text-white text-xs font-medium disabled:opacity-40">Create folder</button>
-            </div>
           </div>
-        </div>
-      )}
+          <DialogFooter className="mt-6">
+            <Button variant="secondary" width="auto" height={32} onClick={() => { setCreateFolderOpen(false); setNewName('') }}>Cancel</Button>
+            <Button width="auto" height={32} onClick={() => handleCreate('folder')} disabled={!newName}>Create folder</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

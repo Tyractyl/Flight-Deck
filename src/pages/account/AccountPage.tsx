@@ -12,7 +12,7 @@ import api from '../../api/client'
 import { uploadAvatar } from '../../api/auth'
 import Button from '../../components/Button'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../../components/ui/Tabs'
-import { Skeleton } from 'parthenon-ui/components'
+import { Skeleton } from '@/components/ui/Skeleton'
 import { sileo } from 'sileo'
 import { HugeiconsIcon } from '@hugeicons/react'
 import {
@@ -69,7 +69,7 @@ function ProfileSection() {
             </div>
           </div>
           <div className="flex justify-end">
-            <Button width={140} height={36} onClick={handleSave} disabled={saving}>
+            <Button size="default"  onClick={handleSave} disabled={saving}>
               {saving ? 'Saving...' : 'Save Changes'}
             </Button>
           </div>
@@ -125,7 +125,7 @@ function SecuritySection() {
             <p className="mt-1 text-xs text-[var(--fg-muted)]">Password must be at least 8 characters long.</p>
           </div>
           <div className="flex justify-end">
-            <Button width={140} height={36} onClick={handleChangePassword} disabled={saving || !currentPassword || !newPassword}>
+            <Button size="default"  onClick={handleChangePassword} disabled={saving || !currentPassword || !newPassword}>
               {saving ? 'Changing...' : 'Update Password'}
             </Button>
           </div>
@@ -198,8 +198,7 @@ function SessionsSection() {
           <h3 className="text-lg font-semibold text-[var(--fg)]">Active Sessions</h3>
           {sessions.length > 1 && (
             <Button
-              width={140}
-              height={28}
+              size="sm"
               onClick={() => revokeAllMutation.mutate()}
               disabled={revokeAllMutation.isPending}
               className="text-xs"
@@ -243,8 +242,7 @@ function SessionsSection() {
                 </div>
                 {!session.is_current && (
                   <Button
-                    width={60}
-                    height={28}
+                    size="sm"
                     onClick={() => revokeMutation.mutate(session.id)}
                     disabled={revokeMutation.isPending}
                   >
@@ -419,10 +417,10 @@ function DeleteAccountModal({ open, onClose, username }: { open: boolean; onClos
             />
           </div>
           <div className="flex justify-end gap-3">
-            <Button variant="secondary" width={100} height={36} onClick={onClose}>
+            <Button variant="secondary" onClick={onClose}>
               Cancel
             </Button>
-            <Button variant="danger" width={140} height={36} onClick={handleDelete} disabled={!canDelete || deleting} loading={deleting}>
+            <Button variant="destructive" onClick={handleDelete} disabled={!canDelete || deleting} loading={deleting}>
               {deleting ? 'Deleting...' : 'Delete Account'}
             </Button>
           </div>
@@ -456,7 +454,7 @@ function DangerZoneSection() {
               Please proceed with caution, this cannot be undone.
             </p>
           </div>
-          <Button variant="danger" width={160} height={36} onClick={() => setShowDeleteModal(true)}>
+          <Button variant="destructive" size="default"  onClick={() => setShowDeleteModal(true)}>
             Delete account
           </Button>
         </div>
@@ -533,13 +531,14 @@ export default function AccountPage() {
         <div>
           <h1 className="text-2xl font-semibold text-[var(--fg)]">{user?.username || 'User'}</h1>
           <p className="text-base text-[var(--fg-muted)]">{user?.email}</p>
-          <button
-            type="button"
+          <Button
+            variant="secondary"
+            size="sm"
             onClick={() => avatarInputRef.current?.click()}
-            className="text-xs text-[var(--accent)] hover:underline mt-1"
+            className="mt-1"
           >
             Upload avatar
-          </button>
+          </Button>
         </div>
       </div>
 

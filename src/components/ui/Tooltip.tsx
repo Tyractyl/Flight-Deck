@@ -1,26 +1,28 @@
-import { useState, type ReactNode } from 'react'
+import * as React from 'react'
+import * as TooltipPrimitive from '@radix-ui/react-tooltip'
+import { cn } from '../../lib/utils'
 
-interface TooltipProps {
-  content: string
-  children: ReactNode
-  className?: string
-}
+const TooltipProvider = TooltipPrimitive.Provider
+const Tooltip = TooltipPrimitive.Root
+const TooltipTrigger = TooltipPrimitive.Trigger
 
-export function Tooltip({ content, children, className = '' }: TooltipProps) {
-  const [show, setShow] = useState(false)
-
-  return (
-    <div
-      className={`relative inline-flex ${className}`}
-      onMouseEnter={() => setShow(true)}
-      onMouseLeave={() => setShow(false)}
-    >
-      {children}
-      {show && (
-        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 text-xs text-[var(--fg)] bg-[var(--bg-elevated)] border border-theme rounded-md whitespace-nowrap z-50 pointer-events-none">
-          {content}
-        </div>
+const TooltipContent = React.forwardRef<
+  React.ComponentRef<typeof TooltipPrimitive.Content>,
+  React.ComponentPropsWithoutRef<typeof TooltipPrimitive.Content>
+>(({ className, sideOffset = 4, ...props }, ref) => (
+  <TooltipPrimitive.Portal>
+    <TooltipPrimitive.Content
+      ref={ref}
+      sideOffset={sideOffset}
+      className={cn(
+        'z-50 overflow-hidden rounded-md bg-[var(--bg-elevated)] px-3 py-1.5 text-xs text-[var(--fg)] border border-[var(--border)] shadow-md',
+        'animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2',
+        className,
       )}
-    </div>
-  )
-}
+      {...props}
+    />
+  </TooltipPrimitive.Portal>
+))
+TooltipContent.displayName = TooltipPrimitive.Content.displayName
+
+export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider }

@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { getAccessToken } from '../../api/client'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 
 interface ServerStatsProps {
@@ -16,7 +17,12 @@ export function ServerStats({ serverId }: ServerStatsProps) {
 
   useEffect(() => {
     const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws'
-    const ws = new WebSocket(`${protocol}://${window.location.host}/api/servers/${serverId}/stats`)
+    const ws = new WebSocket(
+      `${protocol}://${window.location.host}/api/servers/${serverId}/stats`,
+      // Browsers cannot set an Authorization header on WebSocket, so the
+      // access token travels in the subprotocol channel.
+      ['access_token', getAccessToken() || ''],
+    )
 
     ws.onmessage = (event) => {
       try {

@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { sileo } from 'sileo'
-import Button from '../../components/Button'
+import { ClassicButton as Button } from '../../components/Button'
 import api from '../../api/client'
+import { useSlidingCaret } from '../../hooks/useSlidingCaret'
 
 export default function ResetPasswordPage() {
   const [searchParams] = useSearchParams()
@@ -12,6 +13,8 @@ export default function ResetPasswordPage() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [done, setDone] = useState(false)
+
+  const resetPasswordCaret = useSlidingCaret<HTMLDivElement>()
 
   const [windowSize, setWindowSize] = useState({ w: window.innerWidth, h: window.innerHeight })
 
@@ -130,12 +133,12 @@ export default function ResetPasswordPage() {
           ) : (
             <form noValidate onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 15, position: 'relative' }}>
               {/* Password Input */}
-              <div className="auth-input-wrapper" style={{ position: 'relative', width: 178, height: 22, background: 'linear-gradient(180deg, #272727 0%, #232323 0.01%, #0a0a0a 100%)', borderRadius: 5 }}>
+              <div className="auth-input-wrapper" ref={resetPasswordCaret} style={{ position: 'relative', width: 178, height: 22, background: 'linear-gradient(180deg, #272727 0%, #232323 0.01%, #0a0a0a 100%)', borderRadius: 5 }}>
                 <div style={{ position: 'absolute', top: -2, left: 15, width: 66, height: 8, background: '#000', borderBottomRightRadius: 3, borderBottomLeftRadius: 3 }} />
                 <div style={{ position: 'absolute', top: -1, left: 20, color: '#fff', fontSize: 5, fontFamily: 'var(--font-sans, ui-sans-serif, system-ui, sans-serif)', pointerEvents: 'none' }}>New Password</div>
                 <svg style={{ position: 'absolute', top: -1, left: 12, width: 4, height: 4 }} viewBox="-1 -1 4 4" fill="none"><path d="M2 2V0H0C1.10457 0 2 0.89543 2 2Z" fill="black" /></svg>
                 <svg style={{ position: 'absolute', top: -1, left: 80, width: 4, height: 4 }} viewBox="-1 -1 4 4" fill="none"><path d="M2 0H0V2C0 0.89543 0.89543 0 2 0Z" fill="black" /></svg>
-                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} style={{ position: 'absolute', top: 7, left: 0, width: '100%', height: 8, background: 'transparent', border: 'none', outline: 'none', color: '#fff', fontSize: 6, fontFamily: 'var(--font-sans, ui-sans-serif, system-ui, sans-serif)', padding: '0 15px', boxSizing: 'border-box', lineHeight: '8px' }} />
+                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} style={{ position: 'absolute', top: 7, left: 0, width: '100%', height: 8, background: 'transparent', border: 'none', outline: 'none', color: '#fff', fontSize: 6, fontFamily: 'var(--font-sans, ui-sans-serif, system-ui, sans-serif)', padding: '0 8px', boxSizing: 'border-box', lineHeight: '6px' }} />
               </div>
               {/* Divider Or */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '2px 0' }}>
@@ -149,7 +152,7 @@ export default function ResetPasswordPage() {
               </Button>
               {/* Submit Button */}
               <div style={{ display: 'flex', justifyContent: 'center', width: 178, marginTop: 30 }}>
-                <Button type="submit" loading={loading} width={167} height={22}>Reset Password</Button>
+                <Button type="submit" loading={loading} width={178} height={22}>Reset Password</Button>
               </div>
             </form>
           )}

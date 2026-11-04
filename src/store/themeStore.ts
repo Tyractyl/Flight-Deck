@@ -18,9 +18,13 @@ function resolveTheme(theme: Theme): 'light' | 'dark' {
   return theme === 'system' ? getSystemTheme() : theme
 }
 
-function applyTheme(theme: Theme) {
+function applyTheme(theme: Theme, animate = false) {
   const resolved = resolveTheme(theme)
   const root = document.documentElement
+  if (animate) {
+    root.classList.add('theme-transition')
+    window.setTimeout(() => root.classList.remove('theme-transition'), 340)
+  }
   root.classList.remove('light', 'dark')
   root.classList.add(resolved)
   root.dataset.theme = resolved
@@ -31,14 +35,14 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
   resolvedTheme: resolveTheme((localStorage.getItem('tyractyl_theme') as Theme) || 'dark'),
   setTheme: (theme) => {
     localStorage.setItem('tyractyl_theme', theme)
-    applyTheme(theme)
+    applyTheme(theme, true)
     set({ theme, resolvedTheme: resolveTheme(theme) })
   },
   toggleTheme: () => {
     const current = get().theme
     const next: Theme = current === 'dark' ? 'light' : current === 'light' ? 'system' : 'dark'
     localStorage.setItem('tyractyl_theme', next)
-    applyTheme(next)
+    applyTheme(next, true)
     set({ theme: next, resolvedTheme: resolveTheme(next) })
   },
 }))

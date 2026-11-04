@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { queryKeys } from '../../api/queryKeys'
 import { adminListUsers, adminListServers, adminListNodes } from '../../api/admin'
-import { Skeleton } from 'parthenon-ui/components'
+import { Skeleton } from '@/components/ui/Skeleton'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { CpuIcon, ComputerIcon, UserIcon, PlayIcon } from '@hugeicons/core-free-icons'
 import { AdminLayout } from '../../components/admin/AdminLayout'

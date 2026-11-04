@@ -120,14 +120,14 @@ function UserDetailDialog({ user, open, onClose }: { user: User; open: boolean; 
           <label className="text-xs font-medium text-muted-foreground">Modify Coins</label>
           <div className="flex flex-wrap gap-2">
             {[100, 500, 1000].map((n) => (
-              <Button key={`grant-${n}`} variant="primary" width={70} height={28} onClick={() => coinsMutation.mutate({ amount: n, type: 'grant' })}>
+              <Button key={`grant-${n}`} variant="default" size="sm" onClick={() => coinsMutation.mutate({ amount: n, type: 'grant' })}>
                 +{n}
               </Button>
             ))}
-            <Button variant="secondary" width={60} height={28} onClick={() => coinsMutation.mutate({ amount: 100, type: 'deduct' })}>
+            <Button variant="secondary" size="sm" onClick={() => coinsMutation.mutate({ amount: 100, type: 'deduct' })}>
               −100
             </Button>
-            <Button variant="danger" width={60} height={28} onClick={() => coinsMutation.mutate({ amount: user.coins ?? 0, type: 'deduct' })}>
+            <Button variant="destructive" size="sm" onClick={() => coinsMutation.mutate({ amount: user.coins ?? 0, type: 'deduct' })}>
               Reset
             </Button>
           </div>
@@ -135,9 +135,8 @@ function UserDetailDialog({ user, open, onClose }: { user: User; open: boolean; 
 
         <DialogFooter className="justify-between">
           <Button
-            variant="danger"
-            width={90}
-            height={34}
+            variant="destructive"
+            size="sm"
             onClick={() => {
               if (confirm(`Delete ${user.username}? This cannot be undone.`)) deleteMutation.mutate()
             }}
@@ -145,10 +144,9 @@ function UserDetailDialog({ user, open, onClose }: { user: User; open: boolean; 
             Delete
           </Button>
           <div className="flex gap-2">
-            <Button variant="secondary" width={60} height={34} onClick={onClose}>Close</Button>
+            <Button variant="secondary" size="sm" onClick={onClose}>Close</Button>
             <Button
-              width={70}
-              height={34}
+              size="sm"
               onClick={() => { setSaving(true); updateMutation.mutate(); setTimeout(() => setSaving(false), 600) }}
               loading={saving}
             >

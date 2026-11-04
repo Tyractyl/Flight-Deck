@@ -23,7 +23,7 @@ function DropdownMenuPortal({
 }
 
 const DropdownMenuTrigger = React.forwardRef<
-  HTMLElement,
+  HTMLButtonElement,
   React.ComponentProps<typeof Menu.Trigger> & { asChild?: boolean }
 >(({ asChild, children, ...props }, ref) => {
   return (

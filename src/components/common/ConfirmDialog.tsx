@@ -75,7 +75,7 @@ export function ConfirmDialog({
           visible ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 translate-y-2'
         }`}
       >
-        <div className="relative overflow-hidden rounded-2xl border border-[var(--border-strong)] bg-[var(--bg-card)] shadow-2xl">
+        <div className="relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg-card)] shadow-2xl">
           {/* Colored top accent */}
           <div className={`h-1 w-full ${isDanger ? 'bg-red-500' : 'bg-[var(--accent)]'}`} />
 
