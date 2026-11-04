@@ -125,10 +125,12 @@ function CreateServerForm({
   const selectedNode = nodeList.find((n) => n.id === data.nodeId)
   /* Free capacity (totals minus what existing servers on the node already
      reserve) — the backend enforces the same numbers, but showing them up
-     front means the form never submits something it would reject. */
-  const availMemGb = Math.floor((selectedNode?.free_memory ?? 0) / 1024)
-  const availDiskGb = Math.floor((selectedNode?.free_disk ?? 0) / 1024)
-  const availCpu = selectedNode?.free_cpu ?? 0
+     front means the form never submits something it would reject. Falls
+     back to totals while a stale cached node list (without the free
+     fields) is in flight. */
+  const availMemGb = Math.floor((selectedNode?.free_memory ?? selectedNode?.total_memory ?? 0) / 1024)
+  const availDiskGb = Math.floor((selectedNode?.free_disk ?? selectedNode?.total_disk ?? 0) / 1024)
+  const availCpu = selectedNode?.free_cpu ?? selectedNode?.total_cpu ?? 0
 
   const eggOptions: SearchableSelectOption[] = eggList.map((egg) => ({
     value: egg.id,
@@ -171,9 +173,13 @@ function CreateServerForm({
         cpu_percent: cpu,
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.servers.all })
       sileo.success({ description: 'Server created successfully', icon: false })
       onClose()
+      // Refresh the list after the dialog's exit animation finishes —
+      // refetching underneath the closing dialog reads as a flash.
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: queryKeys.servers.all })
+      }, 260)
     },
     onError: () => {
       sileo.error({ description: 'Failed to create server', icon: false })
